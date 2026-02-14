@@ -26,8 +26,6 @@ function Footer() {
     Support
   </a>
 </div>
-
-
     </footer>
   );
 }

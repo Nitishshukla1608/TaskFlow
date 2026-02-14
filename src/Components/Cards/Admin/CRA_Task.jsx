@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { useSelector } from "react-redux";
 
 
 function CRA_Task() {
@@ -15,9 +14,6 @@ function CRA_Task() {
   const [priority, setPriority] = useState("");
   const [status, setStatus] = useState("");
   const [estimatedHours, setEstimatedHours] = useState("");
-
-  const user = useSelector((state)=> state.auth.user)
- 
 
   const handleAssign = () => {
     console.log({

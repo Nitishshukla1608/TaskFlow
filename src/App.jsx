@@ -19,9 +19,7 @@ function App() {
     // ✅ sync state with storage
     setEmployeeData(EMPLOYEE_SEED);
     setAdminData(ADMIN_SEED);
-
-    console.log(JSON.parse(localStorage.getItem("admins")));
-  
+    
   }, []);
 
   return (

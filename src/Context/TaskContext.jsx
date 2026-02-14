@@ -1,9 +1,9 @@
 import {createSlice} from "@reduxjs/toolkit"
 
 const taskSlice = createSlice({
-    name:taskList,
+    name:"taskList",
     initialState:{
-        Task:{}
+        Task:[]
     },
     reducer:{
         setTask(state , action){
