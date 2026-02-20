@@ -27,27 +27,28 @@ import {
 ========================= */
 
 // 🔹 Email + Password Signup
-export const signupUser = async (email, password, role, name, position) => {
+export const signupUser = async (email, password, role, name, position , phone, 
+  organization, 
+  regId,) => {
   // 1️⃣ Create user with email & password
   const userCredential = await createUserWithEmailAndPassword(auth, email, password);
   const user = userCredential.user;
-
-
-
-
 
   // 3️⃣ Save user data in Firestore
   await setDoc(doc(db, "users", user.uid), {
     uid: user.uid,
     name,
     email,
-    role,
+    role, 
     position,
+    phone, 
+    organization, 
+    regId,
     yourTotal: 0,
     createdAt: serverTimestamp(),
   });
 
-  return user;
+  return user;  
 };
 
 // 🔹 Google Signup
