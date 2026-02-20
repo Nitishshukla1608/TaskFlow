@@ -1,32 +1,39 @@
-import { useEffect, useState } from 'react';
-import './App.css';
-import { useSelector } from 'react-redux';
-import { employeeData as EMPLOYEE_SEED, adminData as ADMIN_SEED } from './Utils/LocalStorage';
-import DashboardWrapper from './Components/Dashboard/DashboardWrapper';
+import { useSelector } from "react-redux";
+import { Routes, Route, Navigate } from "react-router-dom";
+
+import Login from "./Components/Pages/Login";
+import Signup from "./Components/Pages/Signup";
+import DashboardWrapper from "./Components/Dashboard/DashboardWrapper";
 
 function App() {
-  const [employeeData, setEmployeeData] = useState([]);
-  const [adminData, setAdminData] = useState([]);
   const user = useSelector((state) => state.auth.user);
 
-  useEffect(() => {
-    // DEV ONLY: reset storage
-    localStorage.clear();
-
-    localStorage.setItem("employees", JSON.stringify(EMPLOYEE_SEED));
-    localStorage.setItem("admins", JSON.stringify(ADMIN_SEED));
-
-    // ✅ sync state with storage
-    setEmployeeData(EMPLOYEE_SEED);
-    setAdminData(ADMIN_SEED);
-    
-  }, []);
-
   return (
-    <DashboardWrapper
-      employeeData={employeeData}
-      adminData={adminData}
-    />
+    <Routes>
+
+      {/* Public */}
+      <Route
+        path="/login"
+        element={!user ? <Login /> : <Navigate to="/DashBoardWrapper" />}
+      />
+      <Route
+        path="/signup"
+        element={!user ? <Signup /> : <Navigate to="/DashBoardWrapper" />}
+      />
+
+      {/* Protected */}
+      <Route
+        path="/DashBoardWrapper/*"
+        element={user ? <DashboardWrapper /> : <Navigate to="/login" />}
+      />
+
+      {/* Fallback */} // whne no any route will match ......
+      <Route
+        path="*"
+        element={<Navigate to={user ? "/DashBoardWrapper" : "/login"} />}
+      />
+
+    </Routes>
   );
 }
 

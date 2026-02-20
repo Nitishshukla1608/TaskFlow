@@ -7,9 +7,13 @@ import {
   FiMoon, 
   FiSun 
 } from "react-icons/fi";
+import { useSelector } from "react-redux";
 
 function Header() {
   const [darkMode, setDarkMode] = useState(false);
+  const user = useSelector((state) => state.auth.user);
+  const userName = user?.displayName || user?.email?.split('@')[0] || 'Employee';
+  const displayUserName = userName.split(' ')[0] + "'s"; // Get first name and add 's'
 
   return (
     <header className="w-full h-16 bg-white shadow-md flex items-center justify-between px-6">
@@ -28,7 +32,7 @@ function Header() {
       <div className="flex items-center gap-8">
            
       <h6 className=" font-semibold text-indigo-600 flex items-center gap-1">
-  Employee
+  {displayUserName} Dashboard
   <span className="w-2 h-2 bg-green-500 rounded-full inline-block"></span>
 </h6>
 

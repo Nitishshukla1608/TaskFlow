@@ -1,53 +1,64 @@
-import React, { useEffect } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { useSelector } from "react-redux";
+import { Routes, Route, Navigate } from "react-router-dom";
 
-import AdminDashboard from './AdminDashboard';
-import EmployeeDashboard from './EmployeeDashboard';
-import Login from '../Auth/Login';
-import AdminMain from '../Mains/AdminMain';
-import EmployeeMain from '../Mains/EmployeeMain';
-import CRA_Task from '../Cards/Admin/CRA_Task';
-import All_Task from '../Cards/Employee/Tasklist';
+import AdminDashboard from "./AdminDashboard";
+import EmployeeDashboard from "./EmployeeDashboard";
 
-import { setTask } from '../../Context/TaskContext';
+import AdminMain from "../../Mains/AdminMain";
+import EmployeeMain from "../../Mains/EmployeeMain";
+import CRA_Task from "../../Components/Pages/Copages/Admin/CRA_Task";
 
-const DashboardWrapper = ({ employeeData, adminData }) => {
+const DashboardWrapper = () => {
   const user = useSelector((state) => state.auth.user);
 
+  if (!user) return <Navigate to="/login" replace />;
 
-  // ✅ If not logged in → Login
-  if (!user || !user.role) {
-    return <Login employeeData={employeeData} adminData={adminData} />;
-  }
+  return (
+    <Routes>
 
-  // ✅ Admin Routes
-  if (user.role === 'admin') {
-    return (
-      <Routes>
-        <Route path="/adminDashboard" element={<AdminDashboard />}>
+      {/* ADMIN */}
+      {user.role === "Admin" && (
+        <Route path="AdminDashboard" element={<AdminDashboard />}>
           <Route index element={<AdminMain />} />
           <Route path="create-task" element={<CRA_Task />} />
         </Route>
-        <Route path="*" element={<Navigate to="/adminDashboard" replace />} />
-      </Routes>
-    );
-  }
+      )}
 
-  // ✅ Employee Routes
-  if (user.role === 'employee') {
-    return (
-      <Routes>
-        <Route path="/employeeDashboard" element={<EmployeeDashboard />}>
+      {/* EMPLOYEE */}
+      {user.role === "Employee" && (
+        <Route path="EmployeeDashboard" element={<EmployeeDashboard />}>
           <Route index element={<EmployeeMain />} />
-          <Route path="view-task" element={<All_Task />} />
         </Route>
-        <Route path="*" element={<Navigate to="/employeeDashboard" replace />} />
-      </Routes>
-    );
-  }
+      )}
 
-  return <div>Unknown user role. Please log in.</div>;
+
+
+      {/* Default redirect based on role */}
+      <Route
+        index
+        element={
+          user.role === "Admin" ? (
+            <Navigate to="AdminDashboard" replace />
+          ) : (
+            <Navigate to="EmployeeDashboard" replace />
+          )
+        }
+      />
+
+
+      {/* Fallback */}
+      <Route
+        path="*"
+        element={
+          <Navigate
+            to={user.role === "Admin" ? "AdminDashboard" : "EmployeeDashboard"}
+            replace
+          />
+        }
+      />
+
+    </Routes>
+  );
 };
 
 export default DashboardWrapper;

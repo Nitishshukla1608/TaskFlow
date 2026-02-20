@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 
 // Redux actions
-import { setUser } from "../../Context/AuthContext";
-import { setTask } from "../../Context/TaskContext";
+import { setUser } from "../Context/AuthContext";
+import { setTask } from "../Context/TaskContext";
 
 function Login({ employeeData, adminData }) {
   const [email, setEmail] = useState("");

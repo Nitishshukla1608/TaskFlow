@@ -1,5 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
 
+import { setTask } from "../../../../Context/TaskContext"
 
 function CRA_Task() {
   const employees = ["Amit", "Neha", "Rohit", "Pooja", "Suresh"];
@@ -14,20 +16,45 @@ function CRA_Task() {
   const [priority, setPriority] = useState("");
   const [status, setStatus] = useState("");
   const [estimatedHours, setEstimatedHours] = useState("");
+  
+  const dispatch = useDispatch();
+  const tasks = useSelector((state) => state.taskList?.Task); // Added optional chaining
+
+  useEffect(() => {
+    console.log("All assigned tasks from Redux store:", tasks);
+  }, [tasks]);
 
   const handleAssign = () => {
-    console.log({
+    const newTask = {
+      id: tasks.length > 0 ? Math.max(...tasks.map(t => t.id)) + 1 : 1, // Simple ID generation
       taskTitle,
       description,
       completionDate,
       assignedTo,
       category,
       priority,
-      status,
+      status: "Assigned", // Default status for new tasks
       estimatedHours,
-    });
+    };
+
+    const updatedTasks = [...tasks, newTask];
+    dispatch(setTask(updatedTasks));
+
+    console.log("New task created:", newTask);
+    console.log("Tasks after adding new task (dispatched to Redux):", updatedTasks);
     alert("Task Assigned Successfully!");
+
+    // Clear form fields after assignment
+    setTaskTitle("");
+    setDescription("");
+    setCompletionDate("");
+    setAssignedTo("");
+    setCategory("");
+    setPriority("");
+    setStatus("");
+    setEstimatedHours("");
   };
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 p-10">
@@ -119,8 +146,6 @@ function CRA_Task() {
             ))}
           </select>
         </div>
-
-
 
         {/* Estimated Hours */}
         <div className="flex flex-col">
