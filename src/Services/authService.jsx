@@ -1,14 +1,11 @@
 // services/authService.js
-
 import { auth, db } from "../firebase";
-
 import {
   createUserWithEmailAndPassword,
   GoogleAuthProvider,
   signInWithEmailAndPassword,
   signInWithPopup,
 } from "firebase/auth";
-
 import {
   doc,
   setDoc,
@@ -26,34 +23,74 @@ import {
    AUTH / USER FUNCTIONS
 ========================= */
 
-// 🔹 Email + Password Signup
-export const signupUser = async (email, password, role, name, position , phone, 
-  organization, 
-  regId,) => {
-  // 1️⃣ Create user with email & password
-  const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-  const user = userCredential.user;
+export const signupUser = async (
+  email,
+  password,
+  role,
+  name,
+  position,
+  phone,
+  organization,
+  regId,
+  address,
+  city,
+  state,
+  pinCode,
+  country
+) => {
+  try {
+    // 1️⃣ Create the user in Firebase Auth
+    // This requires email as the 2nd argument and password as the 3rd
+    const userCredential = await createUserWithEmailAndPassword(
+      auth,
+      email,
+      password
+    );
+    const user = userCredential.user;
 
-  // 3️⃣ Save user data in Firestore
-  await setDoc(doc(db, "users", user.uid), {
-    uid: user.uid,
-    name,
-    email,
-    role, 
-    position,
-    phone, 
-    organization, 
-    regId,
-    yourTotal: 0,
-    createdAt: serverTimestamp(),
-  });
+    // 2️⃣ Prepare the document reference
+    const userDocRef = doc(db, "users", user.uid);
 
-  return user;  
+    // 3️⃣ Save data to Firestore
+    // Every field uses || "" to prevent "Unsupported field value: undefined"
+    await setDoc(userDocRef, {
+      uid: user.uid,
+      email: email || "",
+      password:password || "",
+      name: name || "",
+      role: role || "Employee",
+      position: position || "",
+      phone: phone || "",
+      organization: organization || "",
+      regId: regId || "",
+      address: address || "",
+      city: city || "",
+      state: state || "",
+      pinCode: pinCode || "",
+      country: country || "",
+      yourTotal: 0,
+      createdAt: serverTimestamp(),
+    });
+
+    return user;
+  } catch (error) {
+    console.error("Error in signupUser:", error.message);
+    throw error; // Pass the error back to the UI to display it
+  }
 };
 
-// 🔹 Google Signup
-// 🔹 Google Signup (Updated to accept profile data)
-export const signupWithGoogle = async (role, name, position) => {
+export const signupWithGoogle = async (
+  role, 
+  name, 
+  position, 
+  organization, 
+  regId, 
+  address, 
+  city, 
+  state, 
+  pinCode, 
+  country
+) => {
   const provider = new GoogleAuthProvider();
   const result = await signInWithPopup(auth, provider);
   const user = result.user;
@@ -61,18 +98,25 @@ export const signupWithGoogle = async (role, name, position) => {
   const userRef = doc(db, "users", user.uid);
   const userSnap = await getDoc(userRef);
 
-  // Only create the doc if it doesn't exist
+  // Only create the document if it's a first-time signup
   if (!userSnap.exists()) {
-    
-
-   
-
     await setDoc(userRef, {
       uid: user.uid,
-      name: name || user.displayName,
-      email: user.email,
+      // Priority: 1. Name from Form, 2. Name from Google, 3. Empty String
+      name: name || user.displayName || "", 
+      email: user.email || "",
+      
+      // Values from your form component
       role: role || "Employee",
-      position: position || "Other",
+      position: position || "",
+      organization: organization || "",
+      regId: regId || "",
+      address: address || "",
+      city: city || "",
+      state: state || "",
+      pinCode: pinCode || "",
+      country: country || "",
+      
       yourTotal: 0,
       createdAt: serverTimestamp(),
     });
@@ -83,119 +127,62 @@ export const signupWithGoogle = async (role, name, position) => {
 
 // 🔹 Login
 export const loginUser = async (email, password) => {
-  /* =========================
-     1️⃣ AUTHENTICATE USER
-  ========================= */
-  const userCredential = await signInWithEmailAndPassword(
-    auth,
-    email,
-    password
-  );
-
+  const userCredential = await signInWithEmailAndPassword(auth, email, password);
   const authUser = userCredential.user;
 
-  if (!authUser || !authUser.uid) {
-    throw new Error("Authentication failed");
-  }
+  if (!authUser || !authUser.uid) throw new Error("Authentication failed");
 
-  /* =========================
-     2️⃣ FETCH FIRESTORE PROFILE
-  ========================= */
   const userRef = doc(db, "users", authUser.uid);
   const snap = await getDoc(userRef);
 
-  if (!snap.exists()) {
-    throw new Error("User profile not found in Firestore");
-  }
+  if (!snap.exists()) throw new Error("User profile not found in Firestore");
 
   const firestoreUser = snap.data();
 
-  /* =========================
-     3️⃣ MERGE (FIRESTORE WINS)
-  ========================= */
   return {
-    // 🔐 Auth (identity)
     uid: authUser.uid,
     email: authUser.email,
     emailVerified: authUser.emailVerified,
-
-    // 📦 Firestore (app data)
     ...firestoreUser,
-
-    // 🕒 Normalize timestamp
-    createdAt:
-      firestoreUser.createdAt?.toDate()?.toISOString() || null,
+    createdAt: firestoreUser.createdAt?.toDate()?.toISOString() || null,
   };
-};
-
-
-
-
-
-
-// 🔹 Get user data (one-time fetch)
-export const getUserData = async (uid) => {
-  const userRef = doc(db, "users", uid);
-  const snap = await getDoc(userRef);
-
-  if (!snap.exists()) {
-    throw new Error("User data not found");
-  }
-
-  return {
-    ...snap.data(),
-    createdAt: snap.data().createdAt?.toDate()?.toISOString() || null, // Convert Timestamp to ISO string
-  };
-};
-
-
-
-// 🔹 Increment user's total tasks
-export const incrementUserTotalTasks = async (uid) => {
-  const userRef = doc(db, "users", uid);
-  await updateDoc(userRef, {
-    yourTotal: increment(1),
-  });
 };
 
 /* =========================
-   REAL-TIME LISTENERS
+   REAL-TIME LISTENERS & GETTERS
 ========================= */
 
-// 🔥 Listening document's in real time
+export const getUserData = async (uid) => {
+  const userRef = doc(db, "users", uid);
+  const snap = await getDoc(userRef);
+  if (!snap.exists()) throw new Error("User data not found");
+  return {
+    ...snap.data(),
+    createdAt: snap.data().createdAt?.toDate()?.toISOString() || null,
+  };
+};
 
+export const incrementUserTotalTasks = async (uid) => {
+  const userRef = doc(db, "users", uid);
+  await updateDoc(userRef, { yourTotal: increment(1) });
+};
 
-// 🔥 Listen to user document
 export const listenToUser = (uid, callback) => {
   const ref = doc(db, "users", uid);
-
   return onSnapshot(ref, (snap) => {
     if (!snap.exists()) return;
-    const userData = {
+    callback({
       uid: snap.id,
       ...snap.data(),
-      createdAt: snap.data().createdAt?.toDate()?.toISOString() || null, // Convert Timestamp to ISO string
-    };
-    callback(userData);
+      createdAt: snap.data().createdAt?.toDate()?.toISOString() || null,
+    });
   });
 };
 
-
-
-// 🔥 Listen to tasks document
 export const listenToTasks = (uid, callback) => {
-  const q = query(
-    collection(db, "tasks"),
-    where("uid", "==", uid)
-  );
-
+  const q = query(collection(db, "tasks"), where("uid", "==", uid));
   return onSnapshot(q, (snapshot) => {
-    const tasks = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
+    const tasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     callback(tasks);
   });
 };
-
-

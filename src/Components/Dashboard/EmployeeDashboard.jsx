@@ -1,35 +1,63 @@
-import React from 'react'
+import React , {useEffect}  from 'react'
 import { Outlet } from "react-router-dom";
-import Header from '../Headooter/Employee/Header'
-import Footer from '../Headooter/Employee/Footer'
+import Header from '../Headooter/Header'
+import Footer from '../Headooter/Footer'
+import { useSelector, useDispatch } from "react-redux";
 import {
   listenToUser,
   listenToTasks,
 } from "../../Services/authService";
+// ✅ Redux slice actions
+import { setUser, setTasks } from "../../Context/AuthContext";
+
 
 function EmployeeDashboard() {
+  const dispatch = useDispatch();
 
+  // 🔐 Auth user (Redux)
+  const authUser = useSelector((state) => state.auth.user);
 
+  /* =========================
+     LISTEN TO USER PROFILE
+  ========================= */
   useEffect(() => {
-    if (!user?.uid) return;
+    if (!authUser?.uid) return;
   
-    const unsubUser = listenToUser(user.uid, dispatch);
-    const unsubTasks = listenToTasks(user.uid, dispatch);
+    const unsubscribe = listenToUser(authUser.uid, (userData) => {
+      dispatch(setUser(userData)); // overwrite, don’t merge
+    });
   
-    return () => {
-      unsubUser();
-      unsubTasks();
-    };
-  }, [user?.uid]);
+    return unsubscribe;
+  }, [authUser?.uid, dispatch]); // ✅ ONLY uid
+  
+
+
+
+  /* =========================
+     LISTEN TO TASKS
+  ========================= */
+  useEffect(() => {
+    if (!authUser?.uid) return;
+
+    const unsubscribe = listenToTasks(authUser.uid, (tasks) => {
+      dispatch(setTasks(tasks));
+    });
+
+    return unsubscribe;
+  }, [authUser?.uid, dispatch]);
 
   
   return (
-    <>
+    <div className="min-h-screen flex flex-col">
     <Header />
-    <Outlet /> {/* Nested route content will render here */}
+
+    <main className="flex-1">
+      <Outlet />
+    </main>
+
     <Footer />
-    </>
-  )
+  </div>
+  );
 }
 
 export default EmployeeDashboard

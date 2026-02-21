@@ -2,7 +2,7 @@ import { useSelector } from "react-redux";
 import { Routes, Route, Navigate } from "react-router-dom";
 
 import Login from "./Components/Pages/Login";
-import Signup from "./Components/Pages/Signup";
+import {Signup} from "./Components/Pages/Signup";
 import DashboardWrapper from "./Components/Dashboard/DashboardWrapper";
 
 function App() {

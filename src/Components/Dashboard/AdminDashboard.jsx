@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
-import Header from "../Headooter/Admin/Header";
-import Footer from "../Headooter/Admin/Footer";
+import Header from "../Headooter/Header";
+import Footer from "../Headooter/Footer";
 import { Outlet } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 
