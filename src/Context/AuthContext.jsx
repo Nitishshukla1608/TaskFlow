@@ -10,6 +10,7 @@ const authSlice = createSlice({
   initialState: {
     user:null, // 🔐 auth user
     tasks:[], // ✅ FIX: tasks should be an array
+    members:[]
   },
   reducers: {
     /* ---------- USER ---------- */
@@ -26,8 +27,13 @@ const authSlice = createSlice({
     setTasks: (state, action) => {
       state.tasks = action.payload; // 🔥 realtime task updates
     },
+
+     /* ...........Members ............  */
+     setMembers:(state , action) =>{
+      state.members=action.payload
+     }
   },
 });
 
-export const { setUser, logout, setTasks } = authSlice.actions;
+export const { setUser, logout, setTasks ,setMembers } = authSlice.actions;
 export default authSlice.reducer;

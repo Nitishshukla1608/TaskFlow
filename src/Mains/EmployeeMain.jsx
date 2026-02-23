@@ -35,7 +35,7 @@ function EmployeeDashboard() {
       {/* 1. Welcome Header */}
       <div className="mb-10">
       <h1 className="text-[1.55rem] font-black text-slate-800 tracking-tight">
-          {user.name?.split(" ")[0]}'s <span className="text-indigo-600">Dashboard</span>
+          {user.name?.split(" ")[0]}
           </h1>
         <p className="text-slate-400 font-semibold mt-1">
           Hello {user.name?.split(" ")[0]}, you have {pendingTasks.length} tasks awaiting action.

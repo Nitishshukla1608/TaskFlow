@@ -7,15 +7,16 @@ import { useSelector, useDispatch } from "react-redux";
 import {
   listenToUser,
   listenToTasks,
+  listenToTeam,
 } from "../../Services/authService";
 
-// ✅ Redux slice actions
-import { setUser, setTasks } from "../../Context/AuthContext";
+// Redux actions
+import { setUser, setTasks, setMembers } from "../../Context/AuthContext";
 
 function AdminDashboard() {
   const dispatch = useDispatch();
 
-  // 🔐 Auth user (Redux)
+  // 🔐 Logged-in auth user
   const authUser = useSelector((state) => state.auth.user);
 
   /* =========================
@@ -23,16 +24,24 @@ function AdminDashboard() {
   ========================= */
   useEffect(() => {
     if (!authUser?.uid) return;
-  
+
     const unsubscribe = listenToUser(authUser.uid, (userData) => {
-      dispatch(setUser(userData)); // overwrite, don’t merge
+      dispatch(setUser(userData));
     });
-  
+
     return unsubscribe;
-  }, [authUser?.uid, dispatch]); // ✅ ONLY uid
-  
+  }, [authUser?.uid, dispatch]);
 
+  /* =========================
+     LISTEN TO TEAM MEMBERS
+  ========================= */
+  useEffect(() => {
+    const unsubscribe = listenToTeam((users) => {
+      dispatch(setMembers(users));
+    });
 
+    return unsubscribe;
+  }, [dispatch]);
 
   /* =========================
      LISTEN TO TASKS
@@ -47,12 +56,12 @@ function AdminDashboard() {
     return unsubscribe;
   }, [authUser?.uid, dispatch]);
 
-
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
 
       <main className="flex-1">
+        {/* Child routes render here */}
         <Outlet />
       </main>
 

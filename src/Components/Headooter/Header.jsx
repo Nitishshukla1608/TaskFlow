@@ -98,7 +98,7 @@ function Header() {
 
         {/* Profile Avatar */}
         <Link
-          to="/profile"
+          to="profile"
           className="ml-2 flex items-center gap-2 group p-1 pr-3 rounded-2xl hover:bg-slate-50 transition-all border border-transparent hover:border-slate-100"
         >
           <div className="w-10 h-10 bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center rounded-xl shadow-md group-hover:shadow-indigo-200 transition-all">

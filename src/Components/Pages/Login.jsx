@@ -23,7 +23,6 @@ const Login = () => {
       setError("Please select your access role");
       return;
     }
-
     setLoading(true);
     setError("");
 
@@ -146,14 +145,7 @@ const Login = () => {
 
           </form>
 
-          <footer className="mt-8 text-center">
-            <p className="text-sm text-slate-500 font-medium">
-              Need access? 
-              <Link to="/signup" className="text-indigo-600 font-bold hover:underline ml-2 italic">
-                Request Account
-              </Link>
-            </p>
-          </footer>
+          
         </div>
       </div>
     </div>

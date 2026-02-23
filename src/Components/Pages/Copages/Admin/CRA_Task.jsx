@@ -18,11 +18,8 @@ function CRA_Task() {
   const [estimatedHours, setEstimatedHours] = useState("");
   
   const dispatch = useDispatch();
-  const tasks = useSelector((state) => state.taskList?.Task); // Added optional chaining
-
-  useEffect(() => {
-    console.log("All assigned tasks from Redux store:", tasks);
-  }, [tasks]);
+  const members = useSelector((state) => state.auth.members);
+console.log(members)
 
   const handleAssign = () => {
     const newTask = {
@@ -83,17 +80,17 @@ function CRA_Task() {
             Assign To
           </label>
           <select
-            value={assignedTo}
-            onChange={(e) => setAssignedTo(e.target.value)}
-            className="px-4 py-3 border rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          >
-            <option value="">Select Employee</option>
-            {employees.map((emp) => (
-              <option key={emp} value={emp}>
-                {emp}
-              </option>
-            ))}
-          </select>
+  value={assignedTo}
+  onChange={(e) => setAssignedTo(e.target.value)}
+  className="px-4 py-3 border rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+>
+  <option value="">Select Employee</option>
+  {members.map((user) => (
+    <option key={user.id} value={user.uid}>
+      {user.name}
+    </option>
+  ))}
+</select>
         </div>
 
         {/* Completion Date */}

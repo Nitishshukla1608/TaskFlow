@@ -1,13 +1,12 @@
 import { useSelector } from "react-redux";
 import { Routes, Route, Navigate } from "react-router-dom";
-
+import Profile1 from "../Pages/Copages/Admin/Profile"
 import AdminDashboard from "./AdminDashboard";
 import EmployeeDashboard from "./EmployeeDashboard";
-
 import AdminMain from "../../Mains/AdminMain";
 import EmployeeMain from "../../Mains/EmployeeMain";
 import CRA_Task from "../../Components/Pages/Copages/Admin/CRA_Task";
-
+import {AddUser} from "../../Components/Pages/Copages/Admin/AddUser"
 const DashboardWrapper = () => {
   const user = useSelector((state) => state.auth.user);
 
@@ -19,9 +18,13 @@ const DashboardWrapper = () => {
       {/* ADMIN */}
       {user.role === "Admin" && (
         <Route path="AdminDashboard" element={<AdminDashboard />}>
+
           <Route index element={<AdminMain />} />
           <Route path="create-task" element={<CRA_Task />} />
-        </Route>
+          <Route path="add-user" element={<AddUser />} />
+          <Route path="profile" element={<Profile1/>}/>
+         
+        </Route> 
       )}
 
       {/* EMPLOYEE */}
@@ -30,8 +33,6 @@ const DashboardWrapper = () => {
           <Route index element={<EmployeeMain />} />
         </Route>
       )}
-
-
 
       {/* Default redirect based on role */}
       <Route
