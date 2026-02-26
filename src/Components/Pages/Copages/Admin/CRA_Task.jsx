@@ -1,186 +1,233 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { 
+  FiType, FiUser, FiCalendar, FiLayers, 
+  FiAlertCircle, FiClock, FiAlignLeft, FiPlusCircle 
+} from "react-icons/fi";
+import { addTask } from "../../../../Services/authService";
 
-import { setTask } from "../../../../Context/TaskContext"
+/* ---------- STATIC CONFIGURATION ---------- */
+const CATEGORIES = [
+  "Bug Fixing", "Feature Development", "Enhancement", "Code Review",
+  "Testing", "Documentation", "Research", "UI/UX Design",
+  "Performance Optimization", "Deployment", "Maintenance",
+  "Database Management", "API Development", "Security Update",
+  "Support & Issue Resolution"
+];
+
+const PRIORITIES = ["High", "Medium", "Low"];
+
+const INPUT_CLASS = "w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all text-slate-700 font-medium placeholder:text-slate-400";
+
+const InputWrapper = ({ label, icon: Icon, children }) => (
+  <div className="flex flex-col gap-2">
+    <label className="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
+      <Icon className="text-indigo-500" /> {label}
+    </label>
+    {children}
+  </div>
+);
 
 function CRA_Task() {
-  const employees = ["Amit", "Neha", "Rohit", "Pooja", "Suresh"];
-  const categories = ["Bug", "Feature", "Improvement", "Research"];
-  const priorities = ["High", "Medium", "Low"];
-
   const [taskTitle, setTaskTitle] = useState("");
   const [description, setDescription] = useState("");
   const [completionDate, setCompletionDate] = useState("");
-  const [assignedTo, setAssignedTo] = useState("");
+  const [assignedToUid, setAssignedToUid] = useState("");
+  const [assignedToName, setAssignedToName] = useState("");
   const [category, setCategory] = useState("");
   const [priority, setPriority] = useState("");
-  const [status, setStatus] = useState("");
   const [estimatedHours, setEstimatedHours] = useState("");
-  
-  const dispatch = useDispatch();
-  const members = useSelector((state) => state.auth.members);
-console.log(members)
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleAssign = () => {
+  // 🛡️ AUTH DATA FROM REDUX
+  const loginUser = useSelector((state) => state.auth?.user) || null;
+  const allMembers = useSelector((state) => state.auth?.members) || [];
+  const existingTasks = useSelector((state) => state.auth?.tasks) || []; 
+
+  // Filter out the logged-in user from the assignment list
+  const members = allMembers.filter((member) => member.uid !== loginUser?.uid);
+
+  const handleUserChange = (e) => {
+    const selectedUid = e.target.value;
+    setAssignedToUid(selectedUid);
+    const member = members.find(m => m.uid === selectedUid);
+    setAssignedToName(member ? member.name : "");
+  };
+
+  const handleAssign = async (e) => {
+    if (e) e.preventDefault();
+
+    if (!loginUser) {
+      setError("Admin profile not loaded. Please try again.");
+      return;
+    }
+
+    // Validation
+    if (!taskTitle || !description || !completionDate || !assignedToUid || !category || !priority || !estimatedHours) {
+      setError("All fields are mandatory.");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+
     const newTask = {
-      id: tasks.length > 0 ? Math.max(...tasks.map(t => t.id)) + 1 : 1, // Simple ID generation
+      // Generate a numeric ID or use Firebase's auto-ID (recommended)
+      // Here we use a timestamp-based ID to ensure uniqueness across clients
+      taskId: `TASK-${Date.now().toString().slice(-6)}`, 
       taskTitle,
       description,
       completionDate,
-      assignedTo,
+      assignedToUid,
+      assignedToName,
       category,
       priority,
-      status: "Assigned", // Default status for new tasks
-      estimatedHours,
+      status: "Pending",
+      estimatedHours: Number(estimatedHours),
+      assignedBy: loginUser.uid,
+      assignedByName: loginUser.name || "Admin",
+      organization: loginUser.organization || "",
+      createdAt: new Date().toISOString()
     };
 
-    const updatedTasks = [...tasks, newTask];
-    dispatch(setTask(updatedTasks));
+    try {
+      // 🚀 Service call to Firebase
+      await addTask("tasks", newTask);
+      
+      alert("🚀 Task Assigned Successfully!");
 
-    console.log("New task created:", newTask);
-    console.log("Tasks after adding new task (dispatched to Redux):", updatedTasks);
-    alert("Task Assigned Successfully!");
-
-    // Clear form fields after assignment
-    setTaskTitle("");
-    setDescription("");
-    setCompletionDate("");
-    setAssignedTo("");
-    setCategory("");
-    setPriority("");
-    setStatus("");
-    setEstimatedHours("");
+      // Reset Form
+      setTaskTitle("");
+      setDescription("");
+      setCompletionDate("");
+      setAssignedToUid("");
+      setAssignedToName("");
+      setCategory("");
+      setPriority("");
+      setEstimatedHours("");
+    } catch (err) {
+      console.error("Assignment Error:", err);
+      setError("Failed to assign: " + err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
+  const isFormIncomplete = !taskTitle || !description || !completionDate || !assignedToUid || !category || !priority || !estimatedHours || loading;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 p-10">
-      <h2 className="text-4xl font-bold text-gray-600 mb-10 text-center">
-        Create Task
-      </h2>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-6xl mx-auto">
-        {/* Task Title */}
-        <div className="flex flex-col">
-          <label className="text-sm font-semibold text-gray-700 mb-1">
-            Task Title
-          </label>
-          <input
-            type="text"
-            value={taskTitle}
-            onChange={(e) => setTaskTitle(e.target.value)}
-            placeholder="Enter task title"
-            className="px-4 py-3 border rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
+    <div className="min-h-screen bg-[#f8fafc] pt-2 pb-12 px-4 md:px-10">
+      <div className="max-w-5xl mx-auto">
+        
+        <div className="mb-6 text-center md:text-left">
+          <h2 className="text-3xl md:text-4xl font-black mt-5 text-slate-800 tracking-tight">
+            Create <span className="text-indigo-600">New Task</span>
+          </h2>
+          <p className="text-slate-500 font-medium mt-1 text-sm">
+            Streamline your workflow by assigning tasks to your team.
+          </p>
+          {error && (
+            <div className="bg-rose-50 text-rose-600 px-4 py-2 rounded-xl text-sm mt-4 font-bold border border-rose-100 animate-pulse">
+               ⚠️ {error}
+            </div>
+          )}
         </div>
 
-        {/* Assign To */}
-        <div className="flex flex-col">
-          <label className="text-sm font-semibold text-gray-700 mb-1">
-            Assign To
-          </label>
-          <select
-  value={assignedTo}
-  onChange={(e) => setAssignedTo(e.target.value)}
-  className="px-4 py-3 border rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
->
-  <option value="">Select Employee</option>
-  {members.map((user) => (
-    <option key={user.id} value={user.uid}>
-      {user.name}
-    </option>
-  ))}
-</select>
-        </div>
+        <div className="bg-white rounded-[2.5rem] shadow-xl shadow-indigo-100/50 border border-slate-100 p-6 md:p-10">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+            
+            <div className="lg:col-span-2">
+              <InputWrapper label="Task Title" icon={FiType}>
+                <input
+                  type="text"
+                  value={taskTitle}
+                  onChange={(e) => setTaskTitle(e.target.value)}
+                  placeholder="e.g. Redesign Landing Page"
+                  className={INPUT_CLASS}
+                />
+              </InputWrapper>
+            </div>
 
-        {/* Completion Date */}
-        <div className="flex flex-col">
-          <label className="text-sm font-semibold text-gray-700 mb-1">
-            Completion Date
-          </label>
-          <input
-            type="date"
-            value={completionDate}
-            onChange={(e) => setCompletionDate(e.target.value)}
-            className="px-4 py-3 border rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
-        </div>
+            <InputWrapper label="Assign To" icon={FiUser}>
+              <select
+                value={assignedToUid}
+                onChange={handleUserChange}
+                className={INPUT_CLASS}
+              >
+                <option value="">Select Employee</option>
+                {members.map((member) => (
+                  <option key={member.uid} value={member.uid}>
+                       {member?.name} • # {member?.uid?.toString().slice(0,6)} ({member?.role})
+                  </option>
+                ))}
+              </select>
+            </InputWrapper>
 
-        {/* Category */}
-        <div className="flex flex-col">
-          <label className="text-sm font-semibold text-gray-700 mb-1">
-            Category
-          </label>
-          <select
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            className="px-4 py-3 border rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          >
-            <option value="">Select Category</option>
-            {categories.map((cat) => (
-              <option key={cat} value={cat}>
-                {cat}
-              </option>
-            ))}
-          </select>
-        </div>
+            <InputWrapper label="Deadline" icon={FiCalendar}>
+              <input 
+                type="date" 
+                value={completionDate} 
+                onChange={(e) => setCompletionDate(e.target.value)} 
+                className={INPUT_CLASS} 
+                min={new Date().toISOString().split("T")[0]} // Prevents past dates
+              />
+            </InputWrapper>
 
-        {/* Priority */}
-        <div className="flex flex-col">
-          <label className="text-sm font-semibold text-gray-700 mb-1">
-            Priority
-          </label>
-          <select
-            value={priority}
-            onChange={(e) => setPriority(e.target.value)}
-            className="px-4 py-3 border rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          >
-            <option value="">Select Priority</option>
-            {priorities.map((p) => (
-              <option key={p} value={p}>
-                {p}
-              </option>
-            ))}
-          </select>
-        </div>
+            <InputWrapper label="Category" icon={FiLayers}>
+              <select value={category} onChange={(e) => setCategory(e.target.value)} className={INPUT_CLASS}>
+                <option value="">Select Category</option>
+                {CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+              </select>
+            </InputWrapper>
 
-        {/* Estimated Hours */}
-        <div className="flex flex-col">
-          <label className="text-sm font-semibold text-gray-700 mb-1">
-            Estimated Hours
-          </label>
-          <input
-            type="number"
-            value={estimatedHours}
-            onChange={(e) => setEstimatedHours(e.target.value)}
-            placeholder="Enter hours"
-            className="px-4 py-3 border rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
-        </div>
+            <InputWrapper label="Priority" icon={FiAlertCircle}>
+              <select value={priority} onChange={(e) => setPriority(e.target.value)} className={INPUT_CLASS}>
+                <option value="">Select Priority</option>
+                {PRIORITIES.map(p => <option key={p} value={p}>{p}</option>)}
+              </select>
+            </InputWrapper>
 
-        {/* Description (full width) */}
-        <div className="flex flex-col md:col-span-2">
-          <label className="text-sm font-semibold text-gray-700 mb-1">
-            Description
-          </label>
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows={5}
-            placeholder="Write task description..."
-            className="px-4 py-3 border rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
-        </div>
-      </div>
+            <InputWrapper label="Estimate (Hours)" icon={FiClock}>
+              <input type="number" value={estimatedHours} onChange={(e) => setEstimatedHours(e.target.value)} className={INPUT_CLASS} placeholder="0" />
+            </InputWrapper>
 
-      {/* Assign Button */}
-      <div className="max-w-6xl flex justify-end mt-8 ml-40">
-        <button
-          onClick={handleAssign}
-          className="w-[20%] bg-indigo-600 text-white py-3 rounded-full font-bold text-lg hover:bg-indigo-700 transition transform hover:scale-105"
-        >
-          Assign Task
-        </button>
+            <div className="md:col-span-2 lg:col-span-3">
+              <InputWrapper label="Detailed Description" icon={FiAlignLeft}>
+                <textarea 
+                  value={description} 
+                  onChange={(e) => setDescription(e.target.value)} 
+                  rows={3} 
+                  placeholder="What needs to be done?" 
+                  className={`${INPUT_CLASS} resize-none`} 
+                />
+              </InputWrapper>
+            </div>
+          </div>
+
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6 border-t border-slate-50 pt-8 mt-6">
+            <p className="text-slate-400 text-xs font-medium italic">
+              * Assigned tasks will appear instantly on the employee dashboard.
+            </p>
+            <button
+              onClick={handleAssign}
+              className="group flex items-center gap-3 bg-indigo-600 text-white px-10 py-4 rounded-2xl font-black uppercase tracking-widest text-sm hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              disabled={isFormIncomplete}
+            >
+              {loading ? (
+                <span className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Processing...
+                </span>
+              ) : (
+                <>
+                  <FiPlusCircle className="text-xl group-hover:rotate-90 transition-transform duration-300" />
+                  Assign Task
+                </>
+              )}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

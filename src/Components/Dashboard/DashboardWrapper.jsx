@@ -1,6 +1,7 @@
 import { useSelector } from "react-redux";
 import { Routes, Route, Navigate } from "react-router-dom";
 import Profile1 from "../Pages/Copages/Admin/Profile"
+import Profile2 from "../Pages/Copages/Employee/EmployeeProfile"
 import AdminDashboard from "./AdminDashboard";
 import EmployeeDashboard from "./EmployeeDashboard";
 import AdminMain from "../../Mains/AdminMain";
@@ -31,6 +32,7 @@ const DashboardWrapper = () => {
       {user.role === "Employee" && (
         <Route path="EmployeeDashboard" element={<EmployeeDashboard />}>
           <Route index element={<EmployeeMain />} />
+          <Route path="profile" element={<Profile1/>}/>
         </Route>
       )}
 

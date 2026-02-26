@@ -8,60 +8,95 @@ import {
   listenToUser,
   listenToTasks,
   listenToTeam,
+  listenToOrganization,
 } from "../../Services/authService";
 
 // Redux actions
-import { setUser, setTasks, setMembers } from "../../Context/AuthContext";
+import { setUser, setTasks, setMembers, setOrganizations } from "../../Context/AuthContext";
 
 function AdminDashboard() {
   const dispatch = useDispatch();
 
-  // 🔐 Logged-in auth user
+  // 🔐 Logged-in auth user from Redux
   const authUser = useSelector((state) => state.auth.user);
 
   /* =========================
-     LISTEN TO USER PROFILE
+      1. LISTEN TO USER PROFILE
   ========================= */
   useEffect(() => {
     if (!authUser?.uid) return;
 
     const unsubscribe = listenToUser(authUser.uid, (userData) => {
+      // This fills the 'role' and 'organization' fields into Redux
       dispatch(setUser(userData));
     });
 
-    return unsubscribe;
+    return () => {
+      if (typeof unsubscribe === "function") unsubscribe();
+    };
   }, [authUser?.uid, dispatch]);
 
   /* =========================
-     LISTEN TO TEAM MEMBERS
+      2. LISTEN TO TEAM MEMBERS
   ========================= */
   useEffect(() => {
-    const unsubscribe = listenToTeam((users) => {
+    // 🛑 Wait for organization data from the profile listener above
+    if (!authUser?.organization) return;
+
+    const unsubscribe = listenToTeam(authUser.organization, (users) => {
       dispatch(setMembers(users));
     });
 
-    return unsubscribe;
+    return () => {
+      if (typeof unsubscribe === "function") unsubscribe();
+    };
+  }, [authUser?.organization, dispatch]);
+
+  /* =========================
+      3. LISTEN TO ORGANIZATIONS
+  ========================= */
+  useEffect(() => {
+    const unsubscribe = listenToOrganization((organizations) => {
+      dispatch(setOrganizations(organizations));
+    });
+
+    return () => {
+      if (typeof unsubscribe === "function") unsubscribe();
+    };
   }, [dispatch]);
 
   /* =========================
-     LISTEN TO TASKS
+      4. LISTEN TO TASKS (FIXED)
   ========================= */
   useEffect(() => {
-    if (!authUser?.uid) return;
+    // 🛑 Stop if any required data is missing from the profile
+    if (!authUser?.uid || !authUser?.role || !authUser?.organization) {
+      console.log("Waiting for user profile to load before listening to tasks...");
+      return;
+    }
 
-    const unsubscribe = listenToTasks(authUser.uid, (tasks) => {
-      dispatch(setTasks(tasks));
-    });
+    // ✅ FIX: Separated the Data Object from the Callback Function
+    const unsubscribe = listenToTasks(
+      {
+        uid: authUser.uid,
+        role: authUser.role,
+        organization: authUser.organization,
+      }, 
+      (tasks) => {
+        dispatch(setTasks(tasks));
+      }
+    );
 
-    return unsubscribe;
-  }, [authUser?.uid, dispatch]);
+    return () => {
+      if (typeof unsubscribe === "function") unsubscribe();
+    };
+  }, [authUser?.uid, authUser?.role, authUser?.organization, dispatch]);
 
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
 
       <main className="flex-1">
-        {/* Child routes render here */}
         <Outlet />
       </main>
 

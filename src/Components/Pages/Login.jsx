@@ -3,14 +3,16 @@ import { loginUser } from "../../Services/authService";
 import { Link, useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { setUser } from "../../Context/AuthContext";
-// Added Eye and EyeOff to imports
-import { Mail, Lock, LogIn, ArrowRight, ShieldCheck, Chrome, Briefcase, Eye, EyeOff } from "lucide-react";
+import { 
+  Mail, Lock, LogIn, ArrowRight, ShieldCheck, 
+  Chrome, Briefcase, Eye, EyeOff, PlusCircle 
+} from "lucide-react";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState(""); 
-  const [showPassword, setShowPassword] = useState(false); // Toggle state
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -33,7 +35,13 @@ const Login = () => {
         throw new Error(`Unauthorized: You are not registered as an ${role}`);
       }
 
-      dispatch(setUser(authUser));
+      const serializableUser = {
+        ...authUser,
+        lastModified: authUser.lastModified?.toMillis ? authUser.lastModified.toMillis() : authUser.lastModified,
+        createdAt: authUser.createdAt?.toMillis ? authUser.createdAt.toMillis() : authUser.createdAt,
+      };
+
+      dispatch(setUser(serializableUser));
       navigate("/DashBoardWrapper", { replace: true });
     } catch (err) {
       setError(err.message || "Invalid credentials");
@@ -50,7 +58,7 @@ const Login = () => {
     <div className="min-h-screen bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-indigo-100 via-slate-50 to-white flex items-center justify-center p-6">
       
       <div className="w-full max-w-[480px] bg-white/70 backdrop-blur-xl rounded-[2.5rem] shadow-[0_30px_60px_rgba(0,0,0,0.12)] border border-white/60 overflow-hidden relative z-10">
-        <div className="p-10">
+        <div className="p-10 pb-6">
           
           <header className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-14 h-14 bg-indigo-600 rounded-2xl shadow-lg shadow-indigo-200 mb-4 transform -rotate-6">
@@ -60,7 +68,6 @@ const Login = () => {
           </header>
 
           <form onSubmit={handleLogin} className="space-y-5">
-            
             {/* ROLE SELECTION */}
             <div className="relative">
               <label className={labelStyle}>Access Role</label>
@@ -98,7 +105,7 @@ const Login = () => {
               </div>
             </div>
 
-            {/* PASSWORD FIELD WITH EYE BUTTON */}
+            {/* PASSWORD FIELD */}
             <div className="relative">
               <label className={labelStyle}>Security Password</label>
               <div className="relative">
@@ -111,17 +118,12 @@ const Login = () => {
                   onChange={(e) => setPassword(e.target.value)} 
                   required 
                 />
-                {/* EYE TOGGLE BUTTON */}
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-indigo-600 transition-colors z-20 focus:outline-none"
                 >
-                  {showPassword ? (
-                    <EyeOff className="w-5 h-5" />
-                  ) : (
-                    <Eye className="w-5 h-5" />
-                  )}
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
             </div>
@@ -142,10 +144,21 @@ const Login = () => {
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </span>
             </button>
-
           </form>
+        </div>
 
-          
+        {/* --- NEW ORGANIZATION SECTION --- */}
+        <div className="px-10 py-6 bg-slate-50/50 border-t border-slate-100 text-center">
+          <p className="text-xs text-slate-500 font-semibold mb-3">
+            Setting up a new team?
+          </p>
+          <Link 
+            to="/register-org" 
+            className="inline-flex items-center gap-2 px-6 py-2.5 bg-white border border-slate-200 text-indigo-600 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-sm hover:border-indigo-600 hover:bg-indigo-50 transition-all active:scale-95"
+          >
+            <PlusCircle className="w-4 h-4" />
+            Create New Organization
+          </Link>
         </div>
       </div>
     </div>
