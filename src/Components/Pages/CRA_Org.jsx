@@ -1,16 +1,19 @@
 import React, { useState } from "react";
+import { useDispatch } from "react-redux";
 import { Link, useNavigate } from "react-router-dom";
 import { 
   FiBriefcase, FiMail, FiUsers, FiUploadCloud, 
   FiMapPin, FiCheckCircle, FiArrowLeft, FiShield 
 } from "react-icons/fi";
 import {addOrganization} from "../../Services/authService"
+import {setOrganization} from "../../Context/AuthContext"
 
 const INPUT_CLASS = "w-full pl-11 pr-4 py-3 bg-white/50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all text-slate-700 font-medium placeholder:text-slate-400";
 const LABEL_STYLE = "text-[11px] font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block";
 const ICON_STYLE = "absolute left-4 top-1/2 -translate-y-1/2 text-indigo-500 w-5 h-5";
 
 function CRA_Org() {
+  const dispatch  = useDispatch();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("")
@@ -29,6 +32,7 @@ function CRA_Org() {
 
 
   const handleSubmit = async (e) => {
+    dispatch(setOrganization(formData.name))
     e.preventDefault();
     setLoading(true);
     setError(""); // Reset error at start of new attempt
@@ -41,7 +45,7 @@ function CRA_Org() {
       alert("🚀 Organization created successfully!");
       
       // 3. Navigation happens ONLY on success
-      navigate("/login");
+      navigate("/createdmin");
     } catch (err) {
       // 4. Handle errors (e.g., org name already exists)
       console.error("Registration Error:", err);

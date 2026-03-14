@@ -42,11 +42,10 @@ function CRA_Task() {
 
   // 🛡️ AUTH DATA FROM REDUX
   const loginUser = useSelector((state) => state.auth?.user) || null;
-  const allMembers = useSelector((state) => state.auth?.members) || [];
-  const existingTasks = useSelector((state) => state.auth?.tasks) || []; 
+  const members = useSelector((state) => state.auth?.members) || [];
 
   // Filter out the logged-in user from the assignment list
-  const members = allMembers.filter((member) => member.uid !== loginUser?.uid);
+
 
   const handleUserChange = (e) => {
     const selectedUid = e.target.value;

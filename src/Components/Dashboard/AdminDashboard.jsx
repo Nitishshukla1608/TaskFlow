@@ -27,7 +27,7 @@ function AdminDashboard() {
     if (!authUser?.uid) return;
 
     const unsubscribe = listenToUser(authUser.uid, (userData) => {
-      // This fills the 'role' and 'organization' fields into Redux
+      // ✅ Update Redux with full Firestore profile (role, organization, etc.)
       dispatch(setUser(userData));
     });
 
@@ -36,6 +36,7 @@ function AdminDashboard() {
     };
   }, [authUser?.uid, dispatch]);
 
+  
   /* =========================
       2. LISTEN TO TEAM MEMBERS
   ========================= */

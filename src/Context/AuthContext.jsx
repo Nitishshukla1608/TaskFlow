@@ -11,7 +11,8 @@ const authSlice = createSlice({
     user:null, // 🔐 auth user
     tasks:[], // ✅ FIX: tasks should be an array
     members:[],
-    organizations:[]
+    organizations:[],
+    organization:""
   },
   reducers: {
     /* ---------- USER ---------- */
@@ -19,7 +20,7 @@ const authSlice = createSlice({
       state.user = action.payload;
     },
 
-    logout: (state) => {a
+    logout: (state) => {
       state.user = null;
       state.tasks = []; // ✅ clear tasks on logout
     },
@@ -39,9 +40,12 @@ const authSlice = createSlice({
         // FIX: Use 'organizations' to match your initialState
         state.organizations = action.payload; 
       },
-
+      setOrganization:(state , action) =>{
+        state.organization
+         = action.payload
+      }
   },
 });
 
-export const { setUser, logout, setTasks ,setMembers,setOrganizations } = authSlice.actions;
+export const { setUser, logout, setTasks ,setMembers,setOrganizations ,setOrganization } = authSlice.actions;
 export default authSlice.reducer;

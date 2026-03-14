@@ -6,6 +6,7 @@ import { setUser } from "./Context/AuthContext";
 
 // Components
 import CRA_org from "./Components/Pages/CRA_Org";
+import {CreateAdmin} from "./Components/Pages/CreateAdmin"
 import Login from "./Components/Pages/Login";
 import DashboardWrapper from "./Components/Dashboard/DashboardWrapper";
 
@@ -49,6 +50,11 @@ function App() {
         path="/register-org"
         element={!user ? <CRA_org /> : <Navigate to="/DashBoardWrapper" />}
       />
+         <Route
+        path="/createdmin"
+        element={!user ? <CreateAdmin /> : <Navigate to="/DashBoardWrapper" />}
+      />
+
 
       {/* --- PROTECTED ROUTES --- */}
       <Route

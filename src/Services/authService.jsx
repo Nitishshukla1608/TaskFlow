@@ -1,11 +1,12 @@
 // services/authService.js
-import { auth, db } from "../firebase";
+import { auth, db, secondaryAuth } from "../firebase";
 import {
   createUserWithEmailAndPassword,
   GoogleAuthProvider,
   signInWithEmailAndPassword,
   signInWithPopup,
   onAuthStateChanged,
+  signOut,
 } from "firebase/auth";
 import {
   doc,
@@ -41,14 +42,12 @@ export const addUser = async (
   address,
   city,
   state,
-  pinCode,
-  
+  pinCode
 ) => {
   try {
-    // 1️⃣ Create the user in Firebase Auth
-    // Firebase Auth handles the heavy lifting of password hashing and security
+    // 1️⃣ Create the user in Firebase Auth using the secondary auth instance
     const userCredential = await createUserWithEmailAndPassword(
-      auth,
+      secondaryAuth,
       email,
       password
     );
@@ -58,11 +57,9 @@ export const addUser = async (
     const userDocRef = doc(db, "users", user.uid);
 
     // 3️⃣ Save data to Firestore
-    // Using || "" or || null ensures Firestore doesn't crash on undefined values
-    await setDoc(userDocRef, {
+    const userData = {
       uid: user.uid,
       email: email || "",
-      // Note: Storing plain text passwords in Firestore is not recommended for production
       password: password || "", 
       name: name || "",
       role: role || "Employee", 
@@ -76,12 +73,22 @@ export const addUser = async (
       pinCode: pinCode || "",
       country: country || "",
       createdAt: serverTimestamp(),
-      isPasswordChangable:true,
-    });
+      isPasswordChangable: true,
+    };
 
-    return user;
+    await setDoc(userDocRef, userData);
+
+    // 4️⃣ Sign out the newly created user from the secondary app instance 
+    // to ensure it doesn't affect any local state if it were to be shared.
+    await signOut(secondaryAuth);
+
+    // Return the data normalized for Redux
+    return {
+      ...userData,
+      createdAt: Date.now(), // Normalized for Redux
+      lastModified: Date.now(),
+    };
   } catch (error) {
-    // Provide more context in the console for debugging
     console.error("Error in service addUser:", error.code, error.message);
     throw error; 
   }
@@ -101,7 +108,7 @@ export const loginUser = async (email, password) => {
   if (!snap.exists()) throw new Error("User profile not found in Firestore");
 
   const firestoreUser = snap.data();
-
+  
   return {
     uid: authUser.uid,
     email: authUser.email,
@@ -110,36 +117,6 @@ export const loginUser = async (email, password) => {
     createdAt: firestoreUser.createdAt?.toDate()?.toISOString() || null,
   };
 };
-
-
-
-export const createUser = async (organization , email , password , role )=>{
-  try{
-     const userCredential = await createUserWithEmailAndPassword(
-      auth,
-      email,
-      password
-    );
-        const user = userCredential.user;
-
-    // 2️⃣ Prepare the document reference
-    const userDocRef = doc(db, "users", user.uid);
-    await setDoc(userDocRef, {
-      uid: user.uid,
-      email: email || "",
-      password:password || "",
-      role: role ,
-       organization: organization || "",
-      createdAt: serverTimestamp(),
-    });
-    return user;
-
-  }catch(error){
-    console.log("Error in signupUser:")
-  }
-}
-
-
 
 export const editUser = async (collectionName, uid, data) => {
   try {
