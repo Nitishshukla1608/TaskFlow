@@ -28,95 +28,92 @@ import {
 ========================= */
 
 
-
-export const addUser = async (
-  name,
-  email,
-  password,
-  role,
-  position,
-  organization,
-  regId,
-  phone,
-  country,
-  address,
-  city,
-  state,
-  pinCode
-) => {
+export const addUser = async (/* parameters... */) => {
   try {
-    // 1️⃣ Create the user in Firebase Auth using the secondary auth instance
-    const userCredential = await createUserWithEmailAndPassword(
-      secondaryAuth,
-      email,
-      password
-    );
-    const user = userCredential.user;
+    // 1️⃣ Create the user in Auth
+    const userCredential = await createUserWithEmailAndPassword(secondaryAuth, email, password);
+    const newUser = userCredential.user;
 
-    // 2️⃣ Prepare the document reference using the unique Auth UID
-    const userDocRef = doc(db, "users", user.uid);
-
-    // 3️⃣ Save data to Firestore
+    // 2️⃣ Prepare Data
+    const userDocRef = doc(db, "users", newUser.uid);
     const userData = {
-      uid: user.uid,
-      email: email || "",
-      password: password || "", 
-      name: name || "",
+      uid: newUser.uid,
+      // ... rest of your data
       role: role || "Employee", 
-      position: position || "",
-      phone: phone || "",
-      organization: organization || "",
-      regId: regId || "",
-      address: address || "",
-      city: city || "",
-      state: state || "",
-      pinCode: pinCode || "",
-      country: country || "",
       createdAt: serverTimestamp(),
-      isPasswordChangable: true,
     };
 
-    await setDoc(userDocRef, userData);
-
-    // 4️⃣ Sign out the newly created user from the secondary app instance 
-    // to ensure it doesn't affect any local state if it were to be shared.
+    // 3️⃣ CRITICAL: Sign out secondaryAuth IMMEDIATELY 
+    // before writing to Firestore to prevent session bleeding
     await signOut(secondaryAuth);
 
-    // Return the data normalized for Redux
-    return {
-      ...userData,
-      createdAt: Date.now(), // Normalized for Redux
-      lastModified: Date.now(),
-    };
+    // 4️⃣ Now write to Firestore. 
+    // Firestore will use the 'Primary Auth' (The Admin) to verify permissions.
+    await setDoc(userDocRef, userData);
+
+    return { ...userData, createdAt: Date.now() };
   } catch (error) {
     console.error("Error in service addUser:", error.code, error.message);
     throw error; 
   }
 };
 
-
-// 🔹 Login
 export const loginUser = async (email, password) => {
   const userCredential = await signInWithEmailAndPassword(auth, email, password);
   const authUser = userCredential.user;
-
-  if (!authUser || !authUser.uid) throw new Error("Authentication failed");
-
   const userRef = doc(db, "users", authUser.uid);
   const snap = await getDoc(userRef);
 
-  if (!snap.exists()) throw new Error("User profile not found in Firestore");
-
+  if (!snap.exists()) throw new Error("User profile not found");
   const firestoreUser = snap.data();
   
   return {
     uid: authUser.uid,
     email: authUser.email,
-    emailVerified: authUser.emailVerified,
     ...firestoreUser,
-    createdAt: firestoreUser.createdAt?.toDate()?.toISOString() || null,
+    createdAt: firestoreUser.createdAt?.toDate?.()?.toISOString() || null,
   };
 };
+
+export const addTask = async (newTask) => {
+  try {
+    const taskId = `TASK_${Date.now()}`;
+    const docRef = doc(db, "tasks", taskId);
+
+    const taskData = {
+      ...newTask,
+      taskId,
+      createdAt: serverTimestamp(),
+      status: newTask.status || "Pending"
+    };
+
+    await setDoc(docRef, taskData);
+    return taskId;
+  } catch (error) {
+    console.error("Error adding Task:", error);
+    throw error;
+  }
+};
+
+export const addOrganization = async (organization) => {
+  try {
+    const orgId = `ORG_${Date.now()}`;
+    const docRef = doc(db, "organization", orgId); 
+    const orgData = {
+      ...organization,
+      orgId,
+      createdAt: serverTimestamp(),
+      status: "active"
+    };
+    await setDoc(docRef, orgData);
+    return orgId; 
+  } catch (error) {
+    console.error("Error adding organization:", error);
+    throw error;
+  }
+};
+
+
 
 export const editUser = async (collectionName, uid, data) => {
   try {
@@ -132,62 +129,6 @@ export const editUser = async (collectionName, uid, data) => {
     return { success: true };
   } catch (error) {
     console.error("Error updating document: ", error);
-    throw error;
-  }
-};
-
-
-// Here i will write function ot add task .....
-
-
-// Here I will write function to add task using custom UID
-export const addTask = async (collectionName, newTask) => {
-  try {
-    // 🔹 Generate a custom task ID (you can change the pattern)
-    const taskId = `TASK_${Date.now()}`;
-
-    // 🔹 Create a reference to the document with custom ID
-    const docRef = doc(db, collectionName, taskId);
-
-    // 🔹 Create the document
-    await setDoc(docRef, {
-      ...newTask,
-      taskId, // store the ID inside the doc (optional but useful)
-      createdAt: new Date().toISOString(),
-    });
-
-    console.log("Task added with custom ID:", taskId);
-    return taskId;
-
-  } catch (error) {
-    console.error("Error in adding Task:", error);
-    throw error;
-  }
-};
-
-
-
-
-export const addOrganization = async (organization) => {
-  try {
-    const orgId = `ORG_${Date.now()}`;
-    
-    // ✅ CHANGE: "organizations" -> "organization" (Matches your Rules)
-    const docRef = doc(db, "organization", orgId); 
-
-    const orgData = {
-      ...organization,
-      orgId,
-      createdAt: new Date().toISOString(),
-      status: "active"
-    };
-
-    await setDoc(docRef, orgData);
-    console.log("Organization added with custom ID:", orgId);
-    return orgId; 
-
-  } catch (error) {
-    console.error("Error in adding organization:", error);
     throw error;
   }
 };
@@ -328,23 +269,16 @@ export const listenToOrganization = (callback) => {
 export const observeAuthState = (callback) => {
   return onAuthStateChanged(auth, async (user) => {
     if (user) {
-      // Fetch the full profile from Firestore since Firebase Auth 
-      // only contains basic info (email/uid)
       const userDoc = await getDoc(doc(db, "users", user.uid));
       if (userDoc.exists()) {
         const userData = userDoc.data();
         callback({
           uid: user.uid,
           ...userData,
-          // 🛠️ Normalize timestamps for Redux
-          lastModified: userData.lastModified?.toMillis() || null,
-          createdAt: userData.createdAt?.toMillis() || null,
+          lastModified: userData.lastModified?.toMillis?.() || null,
+          createdAt: userData.createdAt?.toMillis?.() || null,
         });
-      } else {
-        callback(null);
-      }
-    } else {
-      callback(null);
-    }
+      } else { callback(null); }
+    } else { callback(null); }
   });
 };
