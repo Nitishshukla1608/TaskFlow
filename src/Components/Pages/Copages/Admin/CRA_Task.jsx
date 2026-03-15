@@ -92,7 +92,7 @@ function CRA_Task() {
 
     try {
       // 🚀 Service call to Firebase
-      await addTask("tasks", newTask);
+      await addTask(newTask);
       
       alert("🚀 Task Assigned Successfully!");
 

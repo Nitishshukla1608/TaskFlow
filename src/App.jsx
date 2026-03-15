@@ -20,6 +20,9 @@ function App() {
       if (userData) {
         // Hydrate Redux state if Firebase session exists
         dispatch(setUser(userData));
+      } else {
+        // Clear Redux state if no session exists
+        dispatch(setUser(null));
       }
       setIsInitializing(false);
     });

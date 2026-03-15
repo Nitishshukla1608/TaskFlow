@@ -54,7 +54,7 @@ export const CreateAdmin = () => {
   
     try {
       // 3. First Admin Account Creation Logic
-      await serviceAddUser(
+      const newUser = await serviceAddUser(
         name, 
         email, 
         password, 
@@ -70,11 +70,8 @@ export const CreateAdmin = () => {
         pinCode
       );
       
-      // 4. Log in the newly created admin to the main Auth instance
-      const authenticatedUser = await loginUser(email, password);
-      
       // Manually set the user in Redux to trigger login immediately
-      dispatch(setUser(authenticatedUser));
+      dispatch(setUser(newUser));
       
       alert(`Success! ${name} is now part of ${organization}`);
       navigate("/DashBoardWrapper");

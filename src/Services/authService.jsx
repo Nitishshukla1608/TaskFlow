@@ -21,20 +21,37 @@ import {
    AUTH / USER FUNCTIONS
 ========================= */
 
-/**
- * Creates a new user via secondaryAuth (to avoid logging out the current admin)
- * and saves their profile to Firestore.
- */
 export const addUser = async (
-  name, email, password, role, position, organization,
-  regId, phone, country, address, city, state, pinCode
+  name,
+  email,
+  password,
+  role,
+  position,
+  organization,
+  regId,
+  phone,
+  country,
+  address,
+  city,
+  state,
+  pinCode
 ) => {
   try {
-    // 1️⃣ Create the user in Auth instance (secondary)
-    const userCredential = await createUserWithEmailAndPassword(secondaryAuth, email, password);
+    // 1️⃣ Determine which auth instance to use.
+    // If we are creating an Admin and no one is logged in, this is the FIRST Admin.
+    // We MUST use the main 'auth' instance so they are signed in for the Firestore write.
+    const isInitialAdmin = role === "Admin" && !auth.currentUser;
+    const authToUse = isInitialAdmin ? auth : secondaryAuth;
+
+    // 2️⃣ Create the user
+    const userCredential = await createUserWithEmailAndPassword(
+      authToUse,
+      email,
+      password
+    );
     const newUser = userCredential.user;
 
-    // 2️⃣ Prepare the document data
+    // 3️⃣ Prepare the document data
     const userData = {
       uid: newUser.uid,
       email: email || "",
@@ -49,25 +66,27 @@ export const addUser = async (
       state: state || "",
       pinCode: pinCode || "",
       country: country || "",
-      createdAt: serverTimestamp(), // Best practice for Firestore
+      createdAt: serverTimestamp(),
       isPasswordChangable: true,
     };
 
-    // 3️⃣ CRITICAL: Sign out secondary instance before writing
-    // This ensures Firestore session uses the 'Primary Auth' (The Admin)
-    await signOut(secondaryAuth);
-
     // 4️⃣ Write to Firestore
+    // If isInitialAdmin is true, the user is now signed into 'auth'.
+    // If isInitialAdmin is false, the Admin is still signed into 'auth'.
     const userDocRef = doc(db, "users", newUser.uid);
     await setDoc(userDocRef, userData);
 
-    // Return serializable data for Redux
+    // 5️⃣ Cleanup secondary instance if used
+    if (authToUse === secondaryAuth) {
+      await signOut(secondaryAuth);
+    }
+
     return {
       ...userData,
-      createdAt: Date.now(), 
+      createdAt: Date.now(),
     };
   } catch (error) {
-    console.error("Error in service addUser:", error.code, error.message);
+    console.error("Error in addUser service:", error.code, error.message);
     throw error;
   }
 };
@@ -86,8 +105,8 @@ export const loginUser = async (email, password) => {
     uid: authUser.uid,
     email: authUser.email,
     ...firestoreUser,
-    // Safely convert Timestamp to ISO string
-    createdAt: firestoreUser.createdAt?.toDate?.()?.toISOString() || null,
+    // Convert Firestore timestamp to serializable ISO string
+    createdAt: firestoreUser.createdAt?.toMillis ? new Date(firestoreUser.createdAt.toMillis()).toISOString() : null,
   };
 };
 
@@ -104,6 +123,10 @@ export const editUser = async (collectionName, uid, data) => {
     throw error;
   }
 };
+
+/* =========================
+   TASK & ORG FUNCTIONS
+========================= */
 
 export const addTask = async (newTask) => {
   try {
@@ -157,18 +180,50 @@ export const listenToUser = (uid, callback) => {
       uid: snap.id,
       ...data,
       lastModified: data.lastModified?.toMillis?.() || null,
-      createdAt: data.createdAt?.toDate?.()?.toISOString() || null,
+      createdAt: data.createdAt?.toMillis?.() || null,
     });
   });
 };
 
+
+
+export const listenToOrganization = (callback) => {
+
+  const q = query(collection(db, "organization"));
+
+  return onSnapshot(q, (snapshot) => {
+
+    const organizations = snapshot.docs.map((doc) => {
+
+      const data = doc.data();
+
+      return {
+
+        id: doc.id,
+
+        ...data,
+
+        createdAt: data.createdAt?.toMillis?.() || null,
+
+      };
+
+    });
+
+    callback(organizations);
+
+  });
+
+};
+
+
 export const listenToTasks = (userData, callback) => {
   const { uid, role, organization } = userData;
-  if (typeof callback !== 'function') return () => {};
+  if (!uid || typeof callback !== 'function') return () => {};
 
   const tasksRef = collection(db, "tasks");
   let q;
 
+  // Admins see everything in their org, Employees see assigned tasks
   if (role === "Admin") {
     q = query(tasksRef, where("organization", "==", organization));
   } else {
@@ -178,13 +233,15 @@ export const listenToTasks = (userData, callback) => {
   return onSnapshot(q, (snapshot) => {
     const tasks = snapshot.docs.map(doc => ({
       id: doc.id,
-      ...doc.data()
+      ...doc.data(),
+      createdAt: doc.data().createdAt?.toMillis?.() || null,
     }));
     callback(tasks);
   }, (err) => console.error("Task Listener Error:", err));
 };
 
 export const listenToTeam = (organizationName, callback) => {
+  if (!organizationName) return () => {};
   const q = query(
     collection(db, "users"),
     where("organization", "==", organizationName)
@@ -204,34 +261,25 @@ export const listenToTeam = (organizationName, callback) => {
   });
 };
 
-export const listenToOrganization = (callback) => {
-  const q = query(collection(db, "organization"));
-  return onSnapshot(q, (snapshot) => {
-    const organizations = snapshot.docs.map((doc) => {
-      const data = doc.data();
-      return {
-        id: doc.id,
-        ...data,
-        createdAt: data.createdAt?.toMillis?.() || null,
-      };
-    });
-    callback(organizations);
-  });
-};
-
 export const observeAuthState = (callback) => {
   return onAuthStateChanged(auth, async (user) => {
     if (user) {
-      const userDoc = await getDoc(doc(db, "users", user.uid));
-      if (userDoc.exists()) {
-        const userData = userDoc.data();
-        callback({
-          uid: user.uid,
-          ...userData,
-          lastModified: userData.lastModified?.toMillis?.() || null,
-          createdAt: userData.createdAt?.toMillis?.() || null,
-        });
-      } else {
+      try {
+        const userDoc = await getDoc(doc(db, "users", user.uid));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          callback({
+            uid: user.uid,
+            ...userData,
+            lastModified: userData.lastModified?.toMillis?.() || null,
+            createdAt: userData.createdAt?.toMillis?.() || null,
+          });
+        } else {
+          // Auth user exists but Firestore doc hasn't been created yet
+          callback({ uid: user.uid, email: user.email, partial: true });
+        }
+      } catch (err) {
+        console.error("Error fetching user profile:", err);
         callback(null);
       }
     } else {

@@ -57,10 +57,10 @@ function AdminMain() {
         </div>
 
         <div className="flex items-center gap-3">
-          <Link to="/add-user" className="flex items-center justify-center w-12 h-12 bg-white text-indigo-600 border border-slate-100 rounded-2xl font-bold shadow-sm hover:shadow-md transition-all active:scale-95">
+          <Link to="add-user" className="flex items-center justify-center w-12 h-12 bg-white text-indigo-600 border border-slate-100 rounded-2xl font-bold shadow-sm hover:shadow-md transition-all active:scale-95">
             <FiUserPlus size={20} />
           </Link>
-          <Link to="/create-task" className="flex items-center justify-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-2xl font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all active:scale-95">
+          <Link to="create-task" className="flex items-center justify-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-2xl font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all active:scale-95">
             <FiPlus strokeWidth={3} /> Task
           </Link>
         </div>

@@ -226,6 +226,8 @@ function EmployeeMain() {
 
 /* ---------- UI SUB-COMPONENTS ---------- */
 
+const getFirstName = (name) => name ? name.split(" ")[0] : "User";
+
 // Updated StatCard with Maximize Button
 function StatCard({ title, value, icon, color, onMaximize }) {
   return (
