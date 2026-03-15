@@ -45,36 +45,36 @@ function App() {
       {/* --- PUBLIC ROUTES --- */}
       <Route
         path="/login"
-        element={!user ? <Login /> : <Navigate to="/DashBoardWrapper" />}
+        element={!user ? <Login /> : <Navigate to="/DashboardWrapper" />}
       />
 
       {/* New Organization Route - Accessible to public */}
       <Route
         path="/register-org"
-        element={!user ? <CRA_org /> : <Navigate to="/DashBoardWrapper" />}
+        element={!user ? <CRA_org /> : <Navigate to="/DashboardWrapper" />}
       />
          <Route
         path="/createdmin"
-        element={!user ? <CreateAdmin /> : <Navigate to="/DashBoardWrapper" />}
+        element={!user ? <CreateAdmin /> : <Navigate to="/DashboardWrapper" />}
       />
 
 
       {/* --- PROTECTED ROUTES --- */}
       <Route
-        path="/DashBoardWrapper/*"
+        path="/DashboardWrapper/*"
         element={user ? <DashboardWrapper /> : <Navigate to="/login" />}
       />
 
       {/* --- REDIRECTS --- */}
       <Route
         path="/"
-        element={<Navigate to={user ? "/DashBoardWrapper" : "/login"} />}
+        element={<Navigate to={user ? "/DashboardWrapper" : "/login"} />}
       />
       
       {/* Fallback for 404s */}
       <Route
         path="*"
-        element={<Navigate to={user ? "/DashBoardWrapper" : "/login"} />}
+        element={<Navigate to={user ? "/DashboardWrapper" : "/login"} />}
       />
     </Routes>
   );

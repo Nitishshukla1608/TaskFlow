@@ -74,7 +74,7 @@ export const CreateAdmin = () => {
       dispatch(setUser(newUser));
       
       alert(`Success! ${name} is now part of ${organization}`);
-      navigate("/DashBoardWrapper");
+      navigate("/DashboardWrapper");
     } catch (err) {
       setError(err.message || "An error occurred during account creation");
     } finally {

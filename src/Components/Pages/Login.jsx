@@ -42,7 +42,7 @@ const Login = () => {
       };
 
       dispatch(setUser(serializableUser));
-      navigate("/DashBoardWrapper", { replace: true });
+      navigate("/DashboardWrapper", { replace: true });
     } catch (err) {
       setError(err.message || "Invalid credentials");
     } finally {
