@@ -1,10 +1,7 @@
-// services/authService.js
 import { auth, db, secondaryAuth } from "../firebase";
 import {
   createUserWithEmailAndPassword,
-  GoogleAuthProvider,
   signInWithEmailAndPassword,
-  signInWithPopup,
   onAuthStateChanged,
   signOut,
 } from "firebase/auth";
@@ -13,66 +10,99 @@ import {
   setDoc,
   getDoc,
   updateDoc,
-  increment,
-  addDoc,
   collection,
   query,
   where,
   onSnapshot,
   serverTimestamp,
-  deleteDoc
 } from "firebase/firestore";
 
 /* =========================
    AUTH / USER FUNCTIONS
 ========================= */
 
-
-export const addUser = async (/* parameters... */) => {
+/**
+ * Creates a new user via secondaryAuth (to avoid logging out the current admin)
+ * and saves their profile to Firestore.
+ */
+export const addUser = async (
+  name, email, password, role, position, organization,
+  regId, phone, country, address, city, state, pinCode
+) => {
   try {
-    // 1️⃣ Create the user in Auth
+    // 1️⃣ Create the user in Auth instance (secondary)
     const userCredential = await createUserWithEmailAndPassword(secondaryAuth, email, password);
     const newUser = userCredential.user;
 
-    // 2️⃣ Prepare Data
-    const userDocRef = doc(db, "users", newUser.uid);
+    // 2️⃣ Prepare the document data
     const userData = {
       uid: newUser.uid,
-      // ... rest of your data
-      role: role || "Employee", 
-      createdAt: serverTimestamp(),
+      email: email || "",
+      name: name || "",
+      role: role || "Employee",
+      position: position || "",
+      phone: phone || "",
+      organization: organization || "",
+      regId: regId || "",
+      address: address || "",
+      city: city || "",
+      state: state || "",
+      pinCode: pinCode || "",
+      country: country || "",
+      createdAt: serverTimestamp(), // Best practice for Firestore
+      isPasswordChangable: true,
     };
 
-    // 3️⃣ CRITICAL: Sign out secondaryAuth IMMEDIATELY 
-    // before writing to Firestore to prevent session bleeding
+    // 3️⃣ CRITICAL: Sign out secondary instance before writing
+    // This ensures Firestore session uses the 'Primary Auth' (The Admin)
     await signOut(secondaryAuth);
 
-    // 4️⃣ Now write to Firestore. 
-    // Firestore will use the 'Primary Auth' (The Admin) to verify permissions.
+    // 4️⃣ Write to Firestore
+    const userDocRef = doc(db, "users", newUser.uid);
     await setDoc(userDocRef, userData);
 
-    return { ...userData, createdAt: Date.now() };
+    // Return serializable data for Redux
+    return {
+      ...userData,
+      createdAt: Date.now(), 
+    };
   } catch (error) {
     console.error("Error in service addUser:", error.code, error.message);
-    throw error; 
+    throw error;
   }
 };
 
 export const loginUser = async (email, password) => {
   const userCredential = await signInWithEmailAndPassword(auth, email, password);
   const authUser = userCredential.user;
+
   const userRef = doc(db, "users", authUser.uid);
   const snap = await getDoc(userRef);
 
-  if (!snap.exists()) throw new Error("User profile not found");
+  if (!snap.exists()) throw new Error("User profile not found in Firestore");
+
   const firestoreUser = snap.data();
-  
   return {
     uid: authUser.uid,
     email: authUser.email,
     ...firestoreUser,
+    // Safely convert Timestamp to ISO string
     createdAt: firestoreUser.createdAt?.toDate?.()?.toISOString() || null,
   };
+};
+
+export const editUser = async (collectionName, uid, data) => {
+  try {
+    const docRef = doc(db, collectionName, uid);
+    await updateDoc(docRef, {
+      ...data,
+      lastModified: serverTimestamp(),
+    });
+    return { success: true };
+  } catch (error) {
+    console.error("Error updating document:", error);
+    throw error;
+  }
 };
 
 export const addTask = async (newTask) => {
@@ -80,17 +110,16 @@ export const addTask = async (newTask) => {
     const taskId = `TASK_${Date.now()}`;
     const docRef = doc(db, "tasks", taskId);
 
-    const taskData = {
+    await setDoc(docRef, {
       ...newTask,
       taskId,
       createdAt: serverTimestamp(),
-      status: newTask.status || "Pending"
-    };
+      status: newTask.status || "Pending",
+    });
 
-    await setDoc(docRef, taskData);
     return taskId;
   } catch (error) {
-    console.error("Error adding Task:", error);
+    console.error("Error in adding Task:", error);
     throw error;
   }
 };
@@ -98,88 +127,51 @@ export const addTask = async (newTask) => {
 export const addOrganization = async (organization) => {
   try {
     const orgId = `ORG_${Date.now()}`;
-    const docRef = doc(db, "organization", orgId); 
+    const docRef = doc(db, "organization", orgId);
+
     const orgData = {
       ...organization,
       orgId,
       createdAt: serverTimestamp(),
-      status: "active"
+      status: "active",
     };
+
     await setDoc(docRef, orgData);
-    return orgId; 
+    return orgId;
   } catch (error) {
-    console.error("Error adding organization:", error);
+    console.error("Error in adding organization:", error);
     throw error;
   }
 };
-
-
-
-export const editUser = async (collectionName, uid, data) => {
-  try {
-    const docRef = doc(db, collectionName, uid);
-    
-    // We use updateDoc to only change the fields passed in 'data'
-    // We also add an 'updatedAt' timestamp automatically
-    await updateDoc(docRef, {
-      ...data,
-      lastModified: serverTimestamp(), 
-    });
-
-    return { success: true };
-  } catch (error) {
-    console.error("Error updating document: ", error);
-    throw error;
-  }
-};
-
 
 /* =========================
-   REAL-TIME LISTENERS & GETTERS
+   REAL-TIME LISTENERS
 ========================= */
-
 
 export const listenToUser = (uid, callback) => {
   const ref = doc(db, "users", uid);
   return onSnapshot(ref, (snap) => {
     if (!snap.exists()) return;
-    
     const data = snap.data();
-    
     callback({
       uid: snap.id,
       ...data,
-      // 🔥 Convert lastModified to a serializable number
-      lastModified: data.lastModified?.toMillis ? data.lastModified.toMillis() : (data.lastModified || null),
-      
-      // Ensure createdAt is also serializable
-      createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : (data.createdAt || null),
+      lastModified: data.lastModified?.toMillis?.() || null,
+      createdAt: data.createdAt?.toDate?.()?.toISOString() || null,
     });
   });
 };
 
-
-
-
-// ✅ Fix: Accept TWO arguments (userData object, callback function)
 export const listenToTasks = (userData, callback) => {
-  // Destructure the first argument
   const { uid, role, organization } = userData;
-  
-  // Safety check to ensure callback exists (the second argument)
-  if (typeof callback !== 'function') {
-    console.error("listenToTasks: Callback missing!", { uid, role, organization });
-    return () => {}; 
-  }
+  if (typeof callback !== 'function') return () => {};
 
   const tasksRef = collection(db, "tasks");
   let q;
 
-  // Logic remains the same
   if (role === "Admin") {
     q = query(tasksRef, where("organization", "==", organization));
   } else {
-    // For Employees: Only show tasks assigned to them
     q = query(tasksRef, where("assignedToUid", "==", uid));
   }
 
@@ -189,82 +181,43 @@ export const listenToTasks = (userData, callback) => {
       ...doc.data()
     }));
     callback(tasks);
-  }, (err) => console.error("Snapshot error:", err));
+  }, (err) => console.error("Task Listener Error:", err));
 };
 
-
-
-
 export const listenToTeam = (organizationName, callback) => {
-  // 1️⃣ Create a query that filters the 'users' collection by the 'organization' field
   const q = query(
-    collection(db, "users"), 
+    collection(db, "users"),
     where("organization", "==", organizationName)
   );
 
-  // 2️⃣ Start the real-time listener
-  return onSnapshot(
-    q,
-    (snapshot) => {
-      const members = snapshot.docs.map((doc) => {
-        const data = doc.data();
-
-        return {
-          id: doc.id,
-          ...data,
-          // 🔥 Normalizing Firestore Timestamps for Redux serializability
-          createdAt: data.createdAt?.toMillis ? data.createdAt.toMillis() : (data.createdAt || null),
-          lastModified: data.lastModified?.toMillis ? data.lastModified.toMillis() : (data.lastModified || null),
-        };
-      });
-
-      callback(members);
-    },
-    (error) => {
-      // ⚠️ This will trigger if your Security Rules block this specific organization query
-      console.error("Error listening to team:", error);
-    }
-  );
+  return onSnapshot(q, (snapshot) => {
+    const members = snapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        createdAt: data.createdAt?.toMillis?.() || null,
+        lastModified: data.lastModified?.toMillis?.() || null,
+      };
+    });
+    callback(members);
+  });
 };
 
-
-  
 export const listenToOrganization = (callback) => {
   const q = query(collection(db, "organization"));
-
-  return onSnapshot(
-    q,
-    (snapshot) => {
-      const organizations = snapshot.docs.map((doc) => { 
-        const data = doc.data();
-
-        // Check if it's a Firestore Timestamp (has toMillis) or a String/Date
-        let normalizedDate = null;
-        if (data.createdAt) {
-          if (typeof data.createdAt.toMillis === "function") {
-            // It's a Firestore Timestamp
-            normalizedDate = data.createdAt.toMillis();
-          } else {
-            // It's already a String or a Date object
-            normalizedDate = new Date(data.createdAt).getTime();
-          }
-        }
-
-        return {
-          id: doc.id,
-          ...data,
-          createdAt: normalizedDate,
-        };
-      });
-
-      callback(organizations);
-    },
-    (error) => {
-      console.error("Error listening to organizations collection:", error);
-    }
-  );
+  return onSnapshot(q, (snapshot) => {
+    const organizations = snapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        createdAt: data.createdAt?.toMillis?.() || null,
+      };
+    });
+    callback(organizations);
+  });
 };
- 
 
 export const observeAuthState = (callback) => {
   return onAuthStateChanged(auth, async (user) => {
@@ -278,7 +231,11 @@ export const observeAuthState = (callback) => {
           lastModified: userData.lastModified?.toMillis?.() || null,
           createdAt: userData.createdAt?.toMillis?.() || null,
         });
-      } else { callback(null); }
-    } else { callback(null); }
+      } else {
+        callback(null);
+      }
+    } else {
+      callback(null);
+    }
   });
 };
