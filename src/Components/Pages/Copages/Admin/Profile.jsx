@@ -30,6 +30,7 @@ function Profile() {
   const user = useSelector((state) => state.auth.user);
   const navigate = useNavigate();
 
+  
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -53,6 +54,7 @@ function Profile() {
   }, [user, isEditing]);
 
   const handleChange = (e) => {
+
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
@@ -67,6 +69,7 @@ function Profile() {
     try {
       await editUser("users", user.uid, formData);
       setIsEditing(false);
+      console.log(user)
       alert("Profile updated successfully!");
     } catch (error) {
       console.error("Error updating profile", error);
@@ -152,11 +155,10 @@ function Profile() {
 
               <button
                 onClick={() => setIsEditing(!isEditing)}
-                className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-bold transition-all shadow-lg active:scale-95 ${
-                  isEditing
+                className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-bold transition-all shadow-lg active:scale-95 ${isEditing
                     ? "bg-rose-500 text-white"
                     : "bg-white text-slate-800"
-                }`}
+                  }`}
               >
 
                 {isEditing ? (
