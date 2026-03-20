@@ -3,6 +3,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { addUser as serviceAddUser, loginUser } from "../../Services/authService";
 import { useNavigate } from "react-router-dom";
 import { setUser } from "../../Context/AuthContext";
+import emailjs from "@emailjs/browser";
 import { 
   Eye, EyeOff, Paperclip, Mail, Lock, User, 
   Phone, Building2, Hash, MapPin, Globe, ShieldCheck, ChevronLeft
@@ -45,10 +46,19 @@ export const CreateAdmin = () => {
   const handleFormSubmit = async (e) => {
     e.preventDefault();
     setError("");
+
+      // 🔐 Password Regex
+      const passwordRegex = /^(?=.*[A-Z])(?=.*[!@#$%^&*])[A-Za-z\d!@#$%^&*]{8,12}$/;
   
-    if (password !== confirmPassword) {
-      return setError("Passwords do not match");
-    }
+      // ❌ Validation check
+      if (!passwordRegex.test(password)) {
+        return setError(
+          "Password must be 8-12 characters, include 1 uppercase and 1 special character."
+        );
+      }
+     if (password !== confirmPassword) {
+       return setError("Passwords do not match");
+     }
  
     setLoading(true);
   
@@ -73,6 +83,17 @@ export const CreateAdmin = () => {
       // Manually set the user in Redux to trigger login immediately
       dispatch(setUser(newUser));
       
+    try{
+      await emailjs.send(
+        "service_65pyqaw",
+        "template_nelf9do",
+        { email: email, name:name , role:role, regId:regId, posiiton:position , organization:organization},
+        "uZNzBSBvD3wP6-gBT"
+      );
+
+    }catch(error){
+      console.log(error)
+    }
       alert(`Success! ${name} is now part of ${organization}`);
       navigate("/DashboardWrapper");
     } catch (err) {

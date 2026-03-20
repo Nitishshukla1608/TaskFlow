@@ -5,7 +5,7 @@ import { useDispatch } from "react-redux";
 import { setUser } from "../../Context/AuthContext";
 import { 
   Mail, Lock, LogIn, ArrowRight, ShieldCheck, 
-  Chrome, Briefcase, Eye, EyeOff, PlusCircle 
+  Briefcase, Eye, EyeOff, PlusCircle 
 } from "lucide-react";
 
 const Login = () => {
@@ -50,12 +50,13 @@ const Login = () => {
     }
   };
 
+  // Reusable Tailwind Classes
   const inputStyle = "w-full pl-11 pr-12 py-3 rounded-2xl border border-gray-200 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all text-sm bg-white/50 shadow-sm appearance-none";
   const labelStyle = "block text-[11px] font-bold text-gray-400 mb-2 uppercase tracking-[0.15em] ml-1";
   const iconStyle = "absolute left-4 top-1/2 -translate-y-1/2 text-indigo-400 w-5 h-5 z-10";
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-indigo-100 via-slate-50 to-white flex items-center justify-center p-6">
+    <div className="min-h-screen bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-indigo-100 via-slate-50 to-white flex items-center justify-center p-6 font-sans">
       
       <div className="w-full max-w-[480px] bg-white/70 backdrop-blur-xl rounded-[2.5rem] shadow-[0_30px_60px_rgba(0,0,0,0.12)] border border-white/60 overflow-hidden relative z-10">
         <div className="p-10 pb-6">
@@ -107,7 +108,15 @@ const Login = () => {
 
             {/* PASSWORD FIELD */}
             <div className="relative">
-              <label className={labelStyle}>Security Password</label>
+              <div className="flex justify-between items-end">
+                <label className={labelStyle}>Security Password</label>
+                <Link 
+                  to="/forgot-password" 
+                  className="text-[10px] font-black text-indigo-500 uppercase tracking-widest hover:text-indigo-700 transition-colors mb-2 mr-1"
+                >
+                  Forgot?
+                </Link>
+              </div>
               <div className="relative">
                 <Lock className={iconStyle} />
                 <input 
@@ -129,7 +138,7 @@ const Login = () => {
             </div>
 
             {error && (
-              <div className="bg-red-50 text-red-600 px-4 py-3 rounded-xl text-xs font-bold border border-red-100 flex items-center gap-2">
+              <div className="bg-red-50 text-red-600 px-4 py-3 rounded-xl text-xs font-bold border border-red-100 flex items-center gap-2 animate-pulse">
                 {error}
               </div>
             )}
@@ -147,7 +156,7 @@ const Login = () => {
           </form>
         </div>
 
-        {/* --- NEW ORGANIZATION SECTION --- */}
+        {/* --- BOTTOM SECTION --- */}
         <div className="px-10 py-6 bg-slate-50/50 border-t border-slate-100 text-center">
           <p className="text-xs text-slate-500 font-semibold mb-3">
             Setting up a new team?
@@ -160,6 +169,12 @@ const Login = () => {
             Create New Organization
           </Link>
         </div>
+      </div>
+
+      {/* Background Decorative Element */}
+      <div className="fixed top-0 left-0 w-full h-full pointer-events-none -z-10 opacity-50">
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-200 rounded-full blur-[120px]" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-100 rounded-full blur-[120px]" />
       </div>
     </div>
   );

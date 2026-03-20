@@ -6,9 +6,10 @@ import { setUser } from "./Context/AuthContext";
 
 // Components
 import CRA_org from "./Components/Pages/CRA_Org";
-import {CreateAdmin} from "./Components/Pages/CreateAdmin"
+import { CreateAdmin } from "./Components/Pages/CreateAdmin";
 import Login from "./Components/Pages/Login";
 import DashboardWrapper from "./Components/Dashboard/DashboardWrapper";
+import ForgotPass from "../src/Components/Pages/ForgotPass"; // Ensure this import path is correct
 
 function App() {
   const dispatch = useDispatch();
@@ -48,16 +49,22 @@ function App() {
         element={!user ? <Login /> : <Navigate to="/DashboardWrapper" />}
       />
 
+      {/* Forgot Password Route - Accessible to public */}
+      <Route
+        path="/forgot-password"
+        element={!user ? <ForgotPass /> : <Navigate to="/DashboardWrapper" />}
+      />
+
       {/* New Organization Route - Accessible to public */}
       <Route
         path="/register-org"
         element={!user ? <CRA_org /> : <Navigate to="/DashboardWrapper" />}
       />
-         <Route
+      
+      <Route
         path="/createdmin"
         element={!user ? <CreateAdmin /> : <Navigate to="/DashboardWrapper" />}
       />
-
 
       {/* --- PROTECTED ROUTES --- */}
       <Route

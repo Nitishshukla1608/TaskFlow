@@ -2,6 +2,7 @@ import { useState } from "react";
 // 1. Added missing useSelector import
 import { useSelector } from "react-redux"; 
 import { addUser } from "../../../../Services/authService";
+import emailjs from "@emailjs/browser";
 
 import { Link, useNavigate } from "react-router-dom";
 import { 
@@ -41,7 +42,15 @@ export const AddUser = () => {
     e.preventDefault();
     setError("");
  
+     // 🔐 Password Regex
+     const passwordRegex = /^(?=.*[A-Z])(?=.*[!@#$%^&*])[A-Za-z\d!@#$%^&*]{8,12}$/;
   
+     // ❌ Validation check
+     if (!passwordRegex.test(password)) {
+       return setError(
+         "Password must be 8-12 characters, include 1 uppercase and 1 special character."
+       );
+     }
     if (password !== confirmPassword) {
       return setError("Passwords do not match");
     }
@@ -67,6 +76,18 @@ export const AddUser = () => {
       );
       
       alert("User account created successfully!");
+
+    try{
+      await emailjs.send(
+        "service_65pyqaw",
+        "template_nelf9do",
+        { email: email, name:name , role:role, regId:regId,posiiton:position , organization:authUser.organization},
+        "uZNzBSBvD3wP6-gBT"
+      );
+
+    }catch(error){
+      console.log(error)
+    }
       // Optionally navigate away after success
       navigate("/AdminDashboard", { replace: true });
     } catch (err) {

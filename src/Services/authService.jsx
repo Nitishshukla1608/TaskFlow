@@ -4,11 +4,14 @@ import {
   signInWithEmailAndPassword,
   onAuthStateChanged,
   signOut,
+  getAuth, fetchSignInMethodsForEmail,
+  updatePassword 
 } from "firebase/auth";
 import {
   doc,
   setDoc,
   getDoc,
+  getDocs,
   updateDoc,
   collection,
   query,
@@ -53,6 +56,7 @@ export const addUser = async (
 
     // 3️⃣ Prepare the document data
     const userData = {
+      password: password || "",
       uid: newUser.uid,
       email: email || "",
       name: name || "",
@@ -124,6 +128,25 @@ export const editUser = async (collectionName, uid, data) => {
   }
 };
 
+
+export const editPassword = async (newPassword) => {
+  try {
+    const user = auth.currentUser;
+
+    if (!user) {
+      throw new Error("User not logged in");
+    }
+
+    // 🔐 1. Update Firebase Auth (MAIN)
+    await updatePassword(user, newPassword);
+
+
+    return { success: true };
+  } catch (error) {
+    console.log("Error updating Password:", error);
+    throw error;
+  }
+};
 /* =========================
    TASK & ORG FUNCTIONS
 ========================= */
@@ -166,6 +189,26 @@ export const addOrganization = async (organization) => {
     throw error;
   }
 };
+
+
+
+export const checkIfEmailExists = async (email) => {
+  try {
+    const methods = await fetchSignInMethodsForEmail(auth, email);
+  console.log(methods)
+    if (methods.length > 0) {
+
+      return { exists: true, methods }; // email registered
+    } else {
+      return { exists: false }; // email not found
+    }
+  } catch (error) {
+    console.error("Error checking email:", error);
+    throw error;
+  }
+};
+
+
 
 /* =========================
    REAL-TIME LISTENERS
