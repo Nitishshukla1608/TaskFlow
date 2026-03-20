@@ -231,9 +231,7 @@ function AdminMain() {
                     {selectedTask.taskTitle}
                   </h3>
                 </div>
-                <button className="p-2 hover:bg-slate-50 text-slate-400 hover:text-indigo-600 rounded-xl transition-colors">
-                  <FiEdit2 size={20} />
-                </button>
+
               </div>
 
               <div className="mb-8">
@@ -364,7 +362,7 @@ function TaskRow({ task, onSelect }) {
         </div>
       </td>
       <td className="px-8 py-5 text-right">
-        <button onClick={() => onSelect(task)} className="p-2 text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all">
+        <button onClick={() => onSelect(task)} className="p-2 text-slate-300 hover:text-red-600 hover:bg-indigo-50 rounded-xl transition-all">
           <FiMoreVertical size={18} />
         </button>
       </td>

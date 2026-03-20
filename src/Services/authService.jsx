@@ -208,7 +208,19 @@ export const checkIfEmailExists = async (email) => {
   }
 };
 
-
+export const updateTaskStatus =  async(taskId , newStatus) =>{
+  try{
+ const docRef  = doc(db , "tasks" , taskId);
+ await updateDoc(docRef, {
+  status : newStatus,
+  lastModified: serverTimestamp(),
+});
+return { success: true };
+  }catch(error){
+    console.error("Error in updating task status :", error);
+    throw error;
+  }
+}
 
 /* =========================
    REAL-TIME LISTENERS
