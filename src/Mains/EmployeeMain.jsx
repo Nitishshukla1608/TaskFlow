@@ -165,7 +165,8 @@ function EmployeeMain() {
             <div className="grid grid-cols-2 gap-3 mb-8">
               {["Pending", "In Progress", "Under Review", "Completed"].map((statusOption) => {
                 const isActive = (localStatus === statusOption);
-                return (
+
+                return ( 
                   <button 
                     key={statusOption}
                     type="button"
