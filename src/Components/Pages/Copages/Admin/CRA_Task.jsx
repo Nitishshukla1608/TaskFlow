@@ -63,7 +63,7 @@ function CRA_Task() {
     }
 
     // Validation
-    if (!taskTitle || !description || !completionDate || !assignedToUid || !category || !priority || !estimatedHours) {
+    if (!taskTitle || !description || !completionDate || !assignedToUid || !category || !priority ) {
       setError("All fields are mandatory.");
       return;
     }

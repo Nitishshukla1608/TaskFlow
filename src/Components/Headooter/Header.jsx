@@ -10,6 +10,9 @@ import {
 } from "react-icons/fi";
 import { useSelector } from "react-redux";
 
+
+
+
 function Header() {
   const [darkMode, setDarkMode] = useState(false);
   const [text, setText] = useState("")
@@ -84,6 +87,7 @@ function Header() {
           {/* Notifications */}
           <button className="relative p-2.5 text-slate-500 hover:bg-slate-50 hover:text-indigo-600 rounded-xl transition-all group">
             <FiBell size={20} />
+          
             <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-red-500 border-2 border-white rounded-full group-hover:scale-125 transition-transform"></span>
           </button>
 

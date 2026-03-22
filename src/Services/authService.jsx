@@ -245,29 +245,17 @@ export const listenToUser = (uid, callback) => {
 export const listenToOrganization = (callback) => {
 
   const q = query(collection(db, "organization"));
-
   return onSnapshot(q, (snapshot) => {
-
     const organizations = snapshot.docs.map((doc) => {
-
       const data = doc.data();
-
       return {
-
         id: doc.id,
-
         ...data,
-
         createdAt: data.createdAt?.toMillis?.() || null,
-
       };
-
     });
-
     callback(organizations);
-
   });
-
 };
 
 
