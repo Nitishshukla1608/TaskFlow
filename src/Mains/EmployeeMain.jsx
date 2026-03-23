@@ -1,16 +1,22 @@
-import React, { useState } from "react";
-import { useSelector } from "react-redux";
+import React, { useState,useEffect  } from "react";
+import { useSelector , useDispatch } from "react-redux";
 import { MdReply } from "react-icons/md";
 import { 
   FiClock, FiCheckCircle, FiActivity, FiLayers, 
   FiMaximize2, FiX, FiMoreVertical, FiCalendar,
   FiEdit2, FiUsers, FiSave, FiLoader 
 } from "react-icons/fi";
-import { updateTaskStatus } from "../Services/authService";
+import { setMessages, clearMessages } from "../Context/ChatContext";
+import { updateTaskStatus ,subscribeToMessages , sendMessage} from "../Services/authService";
+
+
+
 
 function EmployeeMain() {
   const user = useSelector((state) => state.auth.user);
   const tasks = useSelector((state) => state.auth.tasks || []);
+  const messages = useSelector((state) => state.chatList?.messages || []);
+  const dispatch = useDispatch();
 
   // --- States ---
   const [localStatus, setLocalStatus] = useState("");
@@ -20,6 +26,14 @@ function EmployeeMain() {
   const [selectedTask, setSelectedTask] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [msgPop, setMsgPop] = useState(false);
+  const [text, setText] = useState("")
+  const [msgError, setMsgError] = useState("")
+  const [msgTask, setMsgTask] = useState(null)
+
+  // --- Filtering Logic (Moved after all hooks) ---
+  const pendingTasks = tasks.filter(t => t.status === "Pending" || t.status === "Assigned" || !t.status);
+  const inProgressTasks = tasks.filter(t => ["In Progress", "Blocked", "Under Review"].includes(t.status));
+  const completedTasks = tasks.filter(t => t.status === "Completed");
 
   if (!user) {
     return (
@@ -28,11 +42,6 @@ function EmployeeMain() {
       </div>
     );
   }
-
-  // --- Filtering Logic ---
-  const pendingTasks = tasks.filter(t => t.status === "Pending" || t.status === "Assigned" || !t.status);
-  const inProgressTasks = tasks.filter(t => ["In Progress", "Blocked", "Under Review"].includes(t.status));
-  const completedTasks = tasks.filter(t => t.status === "Completed");
 
   const getFilteredTasks = () => {
     switch (modalFilter) {
@@ -63,6 +72,49 @@ function EmployeeMain() {
     }
   };
 
+
+
+  const handleSend = async () => {
+    if (!text.trim()) return setMsgError("Type something first!");
+  
+    const msgData = {
+      text: text,
+      senderId: user.uid,
+      senderName: user.name,
+    };
+  
+    try {
+      await sendMessage(msgTask.taskId, msgData);
+      setText("");
+      setMsgError("");
+    } catch (error) {
+      setMsgError("Message not sent");
+    }
+  };
+
+
+
+
+
+
+
+  useEffect(() => {
+    if (!msgTask) return;
+  
+    const unsubscribe = subscribeToMessages(msgTask.taskId, (msgs) => {
+      dispatch(setMessages(msgs)); // ✅ store in Redux
+    });
+  
+    return () => {
+      unsubscribe();
+      dispatch(clearMessages()); // ✅ cleanup when task changes/unmount
+    };
+  }, [msgTask, dispatch]);
+
+
+
+
+
   return (
     <div className="p-8 bg-[#f8fafc] min-h-screen relative font-sans text-slate-900">
       
@@ -78,22 +130,190 @@ function EmployeeMain() {
         </p>
       </div>
 
-      {/* 2. Message Popup (Fixed Logic) */}
-      {msgPop && (
-        <div className="fixed top-10 right-10 z-[200] bg-white border border-slate-100 p-6 rounded-[2rem] shadow-2xl animate-in fade-in slide-in-from-top-4 duration-300">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="p-2 bg-indigo-50 text-indigo-600 rounded-full"><MdReply size={18}/></div>
-            <p className="font-black text-slate-800 tracking-tight">Quick Reply</p>
+
+
+
+
+
+
+
+
+
+
+
+
+{/* 2. Message Popup */}
+{msgPop && msgTask && (
+  <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
+    {/* Background Overlay */}
+    <div 
+      className="absolute inset-0 bg-slate-900/60 backdrop-blur-md transition-opacity duration-300" 
+      onClick={() => {
+        setMsgPop(false);
+        setMsgTask(null);
+        dispatch(clearMessages());
+      }}
+    />
+
+    {/* Modal Container - Height set to 75vh for better focus */}
+    <div className="relative w-full max-w-2xl h-[75vh] bg-white rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col border border-slate-100 animate-in zoom-in-95 duration-200">
+      
+      {/* Header Section */}
+      <div className="p-6 border-b border-slate-50 bg-white/95 backdrop-blur-md sticky top-0 z-10">
+        <div className="flex justify-between items-start">
+          <div className="flex flex-col gap-1.5">
+            <h2 className="font-black text-xl text-slate-800 tracking-tight leading-none">
+              {msgTask.taskTitle}
+            </h2>
+            <div className="flex items-center gap-2">
+              <span className="text-[9px] font-black text-slate-400 bg-slate-50 border border-slate-100 px-2.5 py-1 rounded-lg uppercase tracking-widest">
+                ID: {msgTask.taskId || msgTask.id || "N/A"}
+              </span>
+              <span className="text-[9px] font-black text-indigo-500 bg-indigo-50 px-2.5 py-1 rounded-lg uppercase tracking-widest">
+                Assigned By: {msgTask.assignedByName || "Admin"}
+              </span>
+            </div>
           </div>
-          <p className="text-sm text-slate-500 mb-5 italic">"This feature is coming soon!"</p>
+          
           <button 
-            onClick={() => setMsgPop(false)} 
-            className="w-full py-2 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-indigo-600 transition-all"
+            onClick={() => {
+              setMsgPop(false);
+              setMsgTask(null);
+              dispatch(clearMessages());
+            }}
+            className="p-2 hover:bg-rose-50 text-slate-400 hover:text-rose-500 rounded-2xl transition-all"
           >
-            Close
+            <FiX size={20} />
           </button>
         </div>
-      )}
+      </div>
+
+      {/* Messages Area - Scrollbar Hidden */}
+      <div 
+        className="flex-1 overflow-y-auto px-6 py-4 bg-[#fafbff] space-y-6 scrollbar-hide"
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+      >
+        <style dangerouslySetInnerHTML={{ __html: `.scrollbar-hide::-webkit-scrollbar { display: none; }`}} />
+
+        {messages.length === 0 && (
+          <div className="flex flex-col items-center justify-center h-full text-slate-300 opacity-50 py-10">
+            <FiActivity size={32} className="mb-3 animate-pulse" />
+            <p className="text-[11px] font-black uppercase tracking-widest">No conversation history</p>
+          </div>
+        )}
+
+        {messages.map((message, index) => {
+          const isMe = message.senderId === user.uid;
+          const msgDate = message.createdAt?.toDate ? message.createdAt.toDate() : new Date();
+          const currentDate = msgDate.toDateString();
+          const prevMsg = index > 0 ? messages[index - 1] : null;
+          const prevDate = prevMsg?.createdAt?.toDate ? prevMsg.createdAt.toDate().toDateString() : null;
+          const showDate = currentDate !== prevDate;
+
+          return (
+            <div key={message.id || index}>
+              {showDate && (
+                <div className="flex items-center justify-center my-8">
+                  <div className="h-[1px] bg-slate-100 flex-1" />
+                  <span className="mx-4 text-[8px] font-black text-slate-400 uppercase tracking-[0.2em]">
+                    {currentDate}
+                  </span>
+                  <div className="h-[1px] bg-slate-100 flex-1" />
+                </div>
+              )}
+
+              <div className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
+                <div className={`flex flex-col ${isMe ? "items-end" : "items-start"} max-w-[82%]`}>
+                  {!isMe && (
+                    <span className="text-[9px] font-black text-slate-400 mb-1.5 ml-2 uppercase tracking-tight">
+                      {message.senderName}
+                    </span>
+                  )}
+                  
+                  <div
+                    className={`p-4 rounded-[1.5rem] shadow-sm border ${
+                      isMe
+                        ? "bg-indigo-600 border-indigo-500 text-white rounded-tr-none shadow-indigo-100"
+                        : "bg-white border-slate-100 text-slate-700 rounded-tl-none shadow-slate-50"
+                    }`}
+                  >
+                    <p className="text-[13px] leading-relaxed font-medium">
+                      {message.text}
+                    </p>
+                    <div className={`flex items-center gap-1 mt-2 ${isMe ? "text-indigo-200" : "text-slate-400"}`}>
+                      <span className="text-[8px] font-black uppercase tracking-tighter">
+                        {msgDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Input Section - Restored and Polished */}
+      <div className="p-6 bg-white border-t border-slate-50">
+        <div className="relative flex items-center gap-3">
+          <div className="relative flex-1">
+            <input
+              type="text"
+              placeholder="Type your message here..."
+              className="w-full bg-slate-50 border border-slate-100 rounded-[1.2rem] pl-5 pr-5 py-4 text-sm font-medium focus:ring-4 focus:ring-indigo-500/5 focus:bg-white focus:border-indigo-200 transition-all outline-none text-slate-700 placeholder:text-slate-400"
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && text.trim()) handleSend();
+              }}
+            />
+          </div>
+
+          <button
+            disabled={!text.trim() || isSaving}
+            onClick={handleSend}
+            className={`flex items-center justify-center w-14 h-14 rounded-[1.2rem] transition-all ${
+              text.trim() 
+                ? "bg-indigo-600 text-white shadow-lg shadow-indigo-100 hover:bg-indigo-700 hover:-translate-y-0.5" 
+                : "bg-slate-50 text-slate-300 cursor-not-allowed border border-slate-100"
+            }`}
+          >
+            {isSaving ? (
+              <FiLoader className="animate-spin" size={20} />
+            ) : (
+              <svg 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                className="w-6 h-6 transform rotate-45 -translate-x-0.5 translate-y-0.5" 
+                stroke="currentColor" 
+                strokeWidth="2.5" 
+                strokeLinecap="round" 
+                strokeLinejoin="round"
+              >
+                <line x1="22" y1="2" x2="11" y2="13"></line>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+              </svg>
+            )}
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+)}
+
+
+
+
+
+
+
+
+
+
+
+
+
 
       {/* 3. Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
@@ -125,11 +345,11 @@ function EmployeeMain() {
             </thead>
             <tbody className="divide-y divide-slate-50">
               {tasks.slice(0, 5).map((task) => (
-                <TaskRow 
-                  key={task.taskId || task.id} 
-                  task={task} 
-                  onSelect={setSelectedTask} 
-                  setMsgPop={setMsgPop} 
+                <TaskRow key={task.taskId || task.id} 
+                task={task} 
+  onSelect={setSelectedTask} 
+  setMsgPop={setMsgPop}
+  setMsgTask={setMsgTask}
                 />
               ))}
             </tbody>
@@ -137,7 +357,44 @@ function EmployeeMain() {
         </div>
       </section>
 
-      {/* 5. Edit Status Modal */}
+      {/* 5. Filter Modal (RESTORED) */}
+      {showAllModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-md" onClick={() => setShowAllModal(false)} />
+          <div className="relative w-full max-w-6xl h-[85vh] bg-white rounded-[3rem] shadow-2xl overflow-hidden flex flex-col border border-slate-100">
+            <div className="p-6 border-b flex justify-between items-center bg-slate-50/50">
+              <div>
+                <h2 className="text-2xl font-black text-slate-800 tracking-tight">{modalFilter} Tasks</h2>
+                <p className="text-xs text-slate-400 font-bold uppercase mt-1">Full list of filtered items</p>
+              </div>
+              <button onClick={() => setShowAllModal(false)} className="p-3 bg-white text-slate-400 hover:text-rose-500 rounded-2xl shadow-sm transition-all"><FiX size={20} /></button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4">
+              <table className="w-full text-left border-collapse">
+                <tbody className="divide-y divide-slate-50">
+                  {getFilteredTasks().map((task) => (
+                    <TaskRow 
+                      key={task.taskId || task.id}  
+                      task={task} 
+                      onSelect={(t) => { setSelectedTask(t); }} 
+                      setMsgPop={setMsgPop}
+                      setMsgTask = {setMsgTask} 
+                    />
+                  ))}
+                </tbody>
+              </table>
+              {getFilteredTasks().length === 0 && (
+                <div className="flex flex-col items-center justify-center h-full text-slate-400 py-20">
+                  <FiLayers size={48} className="mb-4 opacity-20" />
+                  <p className="font-bold">No tasks found in this category.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 6. Edit Status Modal */}
       {isEditModalOpen && selectedTask && (
         <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setIsEditModalOpen(false)} />
@@ -145,17 +402,11 @@ function EmployeeMain() {
             <h2 className="text-2xl font-black text-slate-800 mb-6 tracking-tight">Update Status</h2>
             <div className="grid grid-cols-2 gap-3 mb-8">
               {["Pending", "In Progress", "Under Review", "Completed"].map((opt) => (
-                <button 
-                  key={opt}
-                  onClick={() => setLocalStatus(opt)}
-                  className={`py-3 px-4 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${localStatus === opt ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-slate-50 text-slate-400 border-slate-100 hover:border-indigo-200'}`}
-                >
-                  {opt}
-                </button>
+                <button key={opt} onClick={() => setLocalStatus(opt)} className={`py-3 px-4 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${localStatus === opt ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-slate-50 text-slate-400 border-slate-100 hover:border-indigo-200'}`}>{opt}</button>
               ))}
             </div>
             <div className="flex gap-3">
-              <button className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold text-sm hover:bg-slate-200" onClick={() => setIsEditModalOpen(false)}>Cancel</button>
+              <button className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold text-sm" onClick={() => setIsEditModalOpen(false)}>Cancel</button>
               <button onClick={handleUpdateStatus} className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-indigo-700 shadow-lg">
                 {isSaving ? <FiLoader className="animate-spin" /> : <FiSave />} Save Changes
               </button>
@@ -164,7 +415,7 @@ function EmployeeMain() {
         </div>
       )}
 
-      {/* 6. Task Detail View */}
+      {/* 7. Task Detail View */}
       {selectedTask && !isEditModalOpen && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setSelectedTask(null)} />
@@ -189,7 +440,7 @@ function EmployeeMain() {
   );
 }
 
-/* ---------- UI SUB-COMPONENTS ---------- */
+/* ---------- SUB-COMPONENTS ---------- */
 
 function StatCard({ title, value, icon, color, onMaximize }) {
   return (
@@ -218,7 +469,7 @@ function InfoRow({ icon, label, value, isStatus }) {
   );
 }
 
-function TaskRow({ task, onSelect, setMsgPop }) {
+function TaskRow({ task, onSelect, setMsgPop , setMsgTask }) {
   if (!task) return null;
   const statusConfig = {
     "Completed": { style: "bg-emerald-50 text-emerald-700 border-emerald-200", icon: <FiCheckCircle className="mr-1" /> },
@@ -248,10 +499,11 @@ function TaskRow({ task, onSelect, setMsgPop }) {
         <div className="flex items-center justify-end gap-3">
           <button
             onClick={(e) => {
-              e.stopPropagation(); // Prevents detail modal from opening
+              e.stopPropagation();
               setMsgPop(true);
+              setMsgTask(task)
             }}
-            className="p-2 hover:bg-slate-100 text-slate-400 hover:text-indigo-600 rounded-xl transition-all"
+            className="p-2 hover:bg-white text-slate-400 hover:text-indigo-600 rounded-xl transition-all shadow-sm border border-transparent hover:border-slate-100"
           >
             <MdReply size={20} />
           </button>

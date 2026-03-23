@@ -18,6 +18,8 @@ import {
   where,
   onSnapshot,
   serverTimestamp,
+  addDoc,
+  orderBy
 } from "firebase/firestore";
 
 /* =========================
@@ -330,3 +332,39 @@ export const observeAuthState = (callback) => {
     }
   });
 };
+
+
+
+//// HERE ARE THE METHODS OF CHAT SYSTTEM...............
+
+// ✅ SEND MESSAGE
+export const sendMessage = async (taskId, messageData) => {
+  try {
+    await addDoc(collection(db, "tasks", taskId, "messages"), {
+      ...messageData,
+      createdAt: serverTimestamp(),
+    });
+  } catch (error) {
+    console.error("Error sending message:", error);
+    throw error;
+  }
+};
+
+export const subscribeToMessages = (taskId, callback) => {
+  const q = query(
+    collection(db, "tasks", taskId, "messages"),
+    orderBy("createdAt", "asc")
+  );
+
+  const unsubscribe = onSnapshot(q, (snapshot) => {
+    const messages = snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+
+    callback(messages);
+  });
+
+  return unsubscribe;
+};
+
