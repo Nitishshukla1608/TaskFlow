@@ -130,7 +130,7 @@ function AdminMain() {
                   <h2 className="font-black text-xl text-slate-800 tracking-tight leading-none">{msgTask.taskTitle}</h2>
                   <div className="flex items-center gap-2">
                     <span className="text-[9px] font-black text-slate-400 bg-slate-50 border border-slate-100 px-2.5 py-1 rounded-lg uppercase tracking-widest">ID: {msgTask.taskId || msgTask.id || "N/A"}</span>
-                    <span className="text-[9px] font-black text-indigo-500 bg-indigo-50 px-2.5 py-1 rounded-lg uppercase tracking-widest">Assigned By: {msgTask.assignedByName || "Admin"}</span>
+                    <span className="text-[9px] font-black text-indigo-500 bg-indigo-50 px-2.5 py-1 rounded-lg uppercase tracking-widest">Assigned By: {msgTask.assignedToName || "Admin"}</span>
                   </div>
                 </div>
                 <button onClick={() => { setMsgPop(false); setMsgTask(null); dispatch(clearMessages()); }} className="p-2 hover:bg-rose-50 text-slate-400 hover:text-rose-500 rounded-2xl transition-all">
