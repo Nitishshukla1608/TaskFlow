@@ -1,5 +1,5 @@
-import React, { useState,useEffect  } from "react";
-import { useSelector , useDispatch } from "react-redux";
+import React, { useState, useEffect, useRef } from "react"; // Fixed: Added useRef
+import { useSelector, useDispatch } from "react-redux";
 import { MdReply } from "react-icons/md";
 import { 
   FiClock, FiCheckCircle, FiActivity, FiLayers, 
@@ -7,15 +7,14 @@ import {
   FiEdit2, FiUsers, FiSave, FiLoader 
 } from "react-icons/fi";
 import { setMessages, clearMessages } from "../Context/ChatContext";
-import { updateTaskStatus ,subscribeToMessages , sendMessage} from "../Services/authService";
-
-
-
+import { updateTaskStatus, subscribeToMessages, sendMessage } from "../Services/authService";
 
 function EmployeeMain() {
   const user = useSelector((state) => state.auth.user);
   const tasks = useSelector((state) => state.auth.tasks || []);
   const messages = useSelector((state) => state.chatList?.messages || []);
+
+  const scrollRef = useRef(null);
   const dispatch = useDispatch();
 
   // --- States ---
@@ -26,14 +25,35 @@ function EmployeeMain() {
   const [selectedTask, setSelectedTask] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [msgPop, setMsgPop] = useState(false);
-  const [text, setText] = useState("")
-  const [msgError, setMsgError] = useState("")
-  const [msgTask, setMsgTask] = useState(null)
+  const [text, setText] = useState("");
+  const [msgError, setMsgError] = useState("");
+  const [msgTask, setMsgTask] = useState(null);
 
-  // --- Filtering Logic (Moved after all hooks) ---
+  // --- Filtering Logic ---
   const pendingTasks = tasks.filter(t => t.status === "Pending" || t.status === "Assigned" || !t.status);
   const inProgressTasks = tasks.filter(t => ["In Progress", "Blocked", "Under Review"].includes(t.status));
   const completedTasks = tasks.filter(t => t.status === "Completed");
+
+  // --- Auto-scroll Effect ---
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages]);
+
+  // --- Message Subscription ---
+  useEffect(() => {
+    if (!msgTask) return;
+  
+    const unsubscribe = subscribeToMessages(msgTask.taskId, (msgs) => {
+      dispatch(setMessages(msgs)); 
+    });
+  
+    return () => {
+      unsubscribe();
+      dispatch(clearMessages()); 
+    };
+  }, [msgTask, dispatch]);
 
   if (!user) {
     return (
@@ -72,8 +92,6 @@ function EmployeeMain() {
     }
   };
 
-
-
   const handleSend = async () => {
     if (!text.trim()) return setMsgError("Type something first!");
   
@@ -92,29 +110,6 @@ function EmployeeMain() {
     }
   };
 
-
-
-
-
-
-
-  useEffect(() => {
-    if (!msgTask) return;
-  
-    const unsubscribe = subscribeToMessages(msgTask.taskId, (msgs) => {
-      dispatch(setMessages(msgs)); // ✅ store in Redux
-    });
-  
-    return () => {
-      unsubscribe();
-      dispatch(clearMessages()); // ✅ cleanup when task changes/unmount
-    };
-  }, [msgTask, dispatch]);
-
-
-
-
-
   return (
     <div className="p-8 bg-[#f8fafc] min-h-screen relative font-sans text-slate-900">
       
@@ -130,190 +125,121 @@ function EmployeeMain() {
         </p>
       </div>
 
+      {/* 2. Message Popup */}
+      {msgPop && msgTask && (
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
+          <div 
+            className="absolute inset-0 bg-slate-900/60 backdrop-blur-md transition-opacity duration-300" 
+            onClick={() => { setMsgPop(false); setMsgTask(null); dispatch(clearMessages()); }}
+          />
 
-
-
-
-
-
-
-
-
-
-
-
-{/* 2. Message Popup */}
-{msgPop && msgTask && (
-  <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
-    {/* Background Overlay */}
-    <div 
-      className="absolute inset-0 bg-slate-900/60 backdrop-blur-md transition-opacity duration-300" 
-      onClick={() => {
-        setMsgPop(false);
-        setMsgTask(null);
-        dispatch(clearMessages());
-      }}
-    />
-
-    {/* Modal Container - Height set to 75vh for better focus */}
-    <div className="relative w-full max-w-2xl h-[75vh] bg-white rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col border border-slate-100 animate-in zoom-in-95 duration-200">
-      
-      {/* Header Section */}
-      <div className="p-6 border-b border-slate-50 bg-white/95 backdrop-blur-md sticky top-0 z-10">
-        <div className="flex justify-between items-start">
-          <div className="flex flex-col gap-1.5">
-            <h2 className="font-black text-xl text-slate-800 tracking-tight leading-none">
-              {msgTask.taskTitle}
-            </h2>
-            <div className="flex items-center gap-2">
-              <span className="text-[9px] font-black text-slate-400 bg-slate-50 border border-slate-100 px-2.5 py-1 rounded-lg uppercase tracking-widest">
-                ID: {msgTask.taskId || msgTask.id || "N/A"}
-              </span>
-              <span className="text-[9px] font-black text-indigo-500 bg-indigo-50 px-2.5 py-1 rounded-lg uppercase tracking-widest">
-                Assigned By: {msgTask.assignedByName || "Admin"}
-              </span>
+          <div className="relative w-full max-w-lg h-[87vh] bg-white rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col border border-slate-100 animate-in zoom-in-95 duration-200">
+            
+            {/* Header Section */}
+            <div className="p-6 border-b border-slate-50 bg-white/95 backdrop-blur-md sticky top-0 z-10">
+              <div className="flex justify-between items-start">
+                <div className="flex flex-col gap-1.5">
+                  <h2 className="font-black text-lg text-slate-800 tracking-tight leading-none">
+                    {msgTask.taskTitle}
+                  </h2>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[8px] font-black text-slate-400 bg-slate-50 border border-slate-100 px-2 py-0.5 rounded-md uppercase tracking-widest">
+                      ID: {msgTask.taskId?.substring(0,8) || "N/A"}
+                    </span>
+                    <span className="text-[8px] font-black text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded-md uppercase tracking-widest">
+                      By: {msgTask.assignedByName || "Admin"}
+                    </span>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => { setMsgPop(false); setMsgTask(null); dispatch(clearMessages()); }}
+                  className="p-2 hover:bg-rose-50 text-slate-400 hover:text-rose-500 rounded-xl transition-all"
+                >
+                  <FiX size={18} />
+                </button>
+              </div>
             </div>
-          </div>
-          
-          <button 
-            onClick={() => {
-              setMsgPop(false);
-              setMsgTask(null);
-              dispatch(clearMessages());
-            }}
-            className="p-2 hover:bg-rose-50 text-slate-400 hover:text-rose-500 rounded-2xl transition-all"
-          >
-            <FiX size={20} />
-          </button>
-        </div>
-      </div>
 
-      {/* Messages Area - Scrollbar Hidden */}
-      <div 
-        className="flex-1 overflow-y-auto px-6 py-4 bg-[#fafbff] space-y-6 scrollbar-hide"
-        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-      >
-        <style dangerouslySetInnerHTML={{ __html: `.scrollbar-hide::-webkit-scrollbar { display: none; }`}} />
+            {/* Messages Area */}
+            <div 
+              className="flex-1 overflow-y-auto px-5 py-4 bg-[#fafbff] space-y-6 scrollbar-hide"
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            >
+              <style dangerouslySetInnerHTML={{ __html: `.scrollbar-hide::-webkit-scrollbar { display: none; }`}} />
 
-        {messages.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-full text-slate-300 opacity-50 py-10">
-            <FiActivity size={32} className="mb-3 animate-pulse" />
-            <p className="text-[11px] font-black uppercase tracking-widest">No conversation history</p>
-          </div>
-        )}
-
-        {messages.map((message, index) => {
-          const isMe = message.senderId === user.uid;
-          const msgDate = message.createdAt?.toDate ? message.createdAt.toDate() : new Date();
-          const currentDate = msgDate.toDateString();
-          const prevMsg = index > 0 ? messages[index - 1] : null;
-          const prevDate = prevMsg?.createdAt?.toDate ? prevMsg.createdAt.toDate().toDateString() : null;
-          const showDate = currentDate !== prevDate;
-
-          return (
-            <div key={message.id || index}>
-              {showDate && (
-                <div className="flex items-center justify-center my-8">
-                  <div className="h-[1px] bg-slate-100 flex-1" />
-                  <span className="mx-4 text-[8px] font-black text-slate-400 uppercase tracking-[0.2em]">
-                    {currentDate}
-                  </span>
-                  <div className="h-[1px] bg-slate-100 flex-1" />
+              {messages.length === 0 && (
+                <div className="flex flex-col items-center justify-center h-full text-slate-300 opacity-50">
+                  <FiActivity size={28} className="mb-3 animate-pulse" />
+                  <p className="text-[10px] font-black uppercase tracking-widest">No messages yet</p>
                 </div>
               )}
 
-              <div className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
-                <div className={`flex flex-col ${isMe ? "items-end" : "items-start"} max-w-[82%]`}>
-                  {!isMe && (
-                    <span className="text-[9px] font-black text-slate-400 mb-1.5 ml-2 uppercase tracking-tight">
-                      {message.senderName}
-                    </span>
-                  )}
-                  
-                  <div
-                    className={`p-4 rounded-[1.5rem] shadow-sm border ${
-                      isMe
-                        ? "bg-indigo-600 border-indigo-500 text-white rounded-tr-none shadow-indigo-100"
-                        : "bg-white border-slate-100 text-slate-700 rounded-tl-none shadow-slate-50"
-                    }`}
-                  >
-                    <p className="text-[13px] leading-relaxed font-medium">
-                      {message.text}
-                    </p>
-                    <div className={`flex items-center gap-1 mt-2 ${isMe ? "text-indigo-200" : "text-slate-400"}`}>
-                      <span className="text-[8px] font-black uppercase tracking-tighter">
-                        {msgDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                      </span>
+              {messages.map((message, index) => {
+                const isMe = message.senderId === user.uid;
+                const msgDate = message.createdAt?.toDate ? message.createdAt.toDate() : new Date();
+                const showDate = index === 0 || msgDate.toDateString() !== (messages[index-1].createdAt?.toDate ? messages[index-1].createdAt.toDate().toDateString() : "");
+
+                return (
+                  <div key={message.id || index}>
+                    {showDate && (
+                      <div className="flex items-center justify-center my-6">
+                        <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest">
+                          {msgDate.toDateString()}
+                        </span>
+                      </div>
+                    )}
+
+                    <div className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
+                      <div className={`flex flex-col ${isMe ? "items-end" : "items-start"} max-w-[85%]`}>
+                        {!isMe && (
+                          <span className="text-[9px] font-black text-slate-400 mb-1 ml-1 uppercase">
+                            {message.senderName}
+                          </span>
+                        )}
+                        <div className={`p-3.5 rounded-[1.2rem] shadow-sm border ${isMe ? "bg-indigo-600 border-indigo-500 text-white rounded-tr-none" : "bg-white border-slate-100 text-slate-700 rounded-tl-none"}`}>
+                          <p className="text-[12px] leading-relaxed font-medium">{message.text}</p>
+                          <div className={`text-[7px] font-black mt-1.5 uppercase ${isMe ? "text-indigo-200" : "text-slate-400"}`}>
+                            {msgDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </div>
+                );
+              })}
+              {/* ✨ THE SCROLL ANCHOR */}
+              <div ref={scrollRef} />
             </div>
-          );
-        })}
-      </div>
 
-      {/* Input Section - Restored and Polished */}
-      <div className="p-6 bg-white border-t border-slate-50">
-        <div className="relative flex items-center gap-3">
-          <div className="relative flex-1">
-            <input
-              type="text"
-              placeholder="Type your message here..."
-              className="w-full bg-slate-50 border border-slate-100 rounded-[1.2rem] pl-5 pr-5 py-4 text-sm font-medium focus:ring-4 focus:ring-indigo-500/5 focus:bg-white focus:border-indigo-200 transition-all outline-none text-slate-700 placeholder:text-slate-400"
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && text.trim()) handleSend();
-              }}
-            />
+            {/* Input Section - Correctly placed outside of the message list */}
+            <div className="p-5 bg-white border-t border-slate-50">
+              <div className="relative flex items-center gap-2">
+                <input
+                  type="text"
+                  placeholder="Type a message..."
+                  className="flex-1 bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3 text-sm font-medium focus:ring-4 focus:ring-indigo-500/5 focus:bg-white outline-none transition-all placeholder:text-slate-400"
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleSend()}
+                />
+                <button
+                  disabled={!text.trim() || isSaving}
+                  onClick={handleSend}
+                  className={`flex items-center justify-center w-12 h-12 rounded-2xl transition-all ${text.trim() ? "bg-indigo-600 text-white shadow-lg shadow-indigo-100 hover:scale-105" : "bg-slate-50 text-slate-300 border border-slate-100"}`}
+                >
+                  {isSaving ? <FiLoader className="animate-spin" size={18} /> : (
+                    <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5 transform rotate-45 -translate-x-0.5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="22" y1="2" x2="11" y2="13"></line>
+                      <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                    </svg>
+                  )}
+                </button>
+              </div>
+              {msgError && <p className="mt-2 text-[10px] font-black text-rose-500 uppercase ml-1 tracking-widest">{msgError}</p>}
+            </div>
           </div>
-
-          <button
-            disabled={!text.trim() || isSaving}
-            onClick={handleSend}
-            className={`flex items-center justify-center w-14 h-14 rounded-[1.2rem] transition-all ${
-              text.trim() 
-                ? "bg-indigo-600 text-white shadow-lg shadow-indigo-100 hover:bg-indigo-700 hover:-translate-y-0.5" 
-                : "bg-slate-50 text-slate-300 cursor-not-allowed border border-slate-100"
-            }`}
-          >
-            {isSaving ? (
-              <FiLoader className="animate-spin" size={20} />
-            ) : (
-              <svg 
-                viewBox="0 0 24 24" 
-                fill="none" 
-                className="w-6 h-6 transform rotate-45 -translate-x-0.5 translate-y-0.5" 
-                stroke="currentColor" 
-                strokeWidth="2.5" 
-                strokeLinecap="round" 
-                strokeLinejoin="round"
-              >
-                <line x1="22" y1="2" x2="11" y2="13"></line>
-                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-              </svg>
-            )}
-          </button>
         </div>
-      </div>
-
-    </div>
-  </div>
-)}
-
-
-
-
-
-
-
-
-
-
-
-
-
+      )}
 
       {/* 3. Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
@@ -331,7 +257,6 @@ function EmployeeMain() {
             View All Tasks <FiMaximize2 />
           </button>
         </div>
-
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
@@ -345,19 +270,14 @@ function EmployeeMain() {
             </thead>
             <tbody className="divide-y divide-slate-50">
               {tasks.slice(0, 5).map((task) => (
-                <TaskRow key={task.taskId || task.id} 
-                task={task} 
-  onSelect={setSelectedTask} 
-  setMsgPop={setMsgPop}
-  setMsgTask={setMsgTask}
-                />
+                <TaskRow key={task.taskId || task.id} task={task} onSelect={setSelectedTask} setMsgPop={setMsgPop} setMsgTask={setMsgTask} />
               ))}
             </tbody>
           </table>
         </div>
       </section>
 
-      {/* 5. Filter Modal (RESTORED) */}
+      {/* 5. Filter Modal */}
       {showAllModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-md" onClick={() => setShowAllModal(false)} />
@@ -373,22 +293,10 @@ function EmployeeMain() {
               <table className="w-full text-left border-collapse">
                 <tbody className="divide-y divide-slate-50">
                   {getFilteredTasks().map((task) => (
-                    <TaskRow 
-                      key={task.taskId || task.id}  
-                      task={task} 
-                      onSelect={(t) => { setSelectedTask(t); }} 
-                      setMsgPop={setMsgPop}
-                      setMsgTask = {setMsgTask} 
-                    />
+                    <TaskRow key={task.taskId || task.id} task={task} onSelect={setSelectedTask} setMsgPop={setMsgPop} setMsgTask={setMsgTask} />
                   ))}
                 </tbody>
               </table>
-              {getFilteredTasks().length === 0 && (
-                <div className="flex flex-col items-center justify-center h-full text-slate-400 py-20">
-                  <FiLayers size={48} className="mb-4 opacity-20" />
-                  <p className="font-bold">No tasks found in this category.</p>
-                </div>
-              )}
             </div>
           </div>
         </div>
@@ -469,7 +377,7 @@ function InfoRow({ icon, label, value, isStatus }) {
   );
 }
 
-function TaskRow({ task, onSelect, setMsgPop , setMsgTask }) {
+function TaskRow({ task, onSelect, setMsgPop, setMsgTask }) {
   if (!task) return null;
   const statusConfig = {
     "Completed": { style: "bg-emerald-50 text-emerald-700 border-emerald-200", icon: <FiCheckCircle className="mr-1" /> },
@@ -501,7 +409,7 @@ function TaskRow({ task, onSelect, setMsgPop , setMsgTask }) {
             onClick={(e) => {
               e.stopPropagation();
               setMsgPop(true);
-              setMsgTask(task)
+              setMsgTask(task);
             }}
             className="p-2 hover:bg-white text-slate-400 hover:text-indigo-600 rounded-xl transition-all shadow-sm border border-transparent hover:border-slate-100"
           >

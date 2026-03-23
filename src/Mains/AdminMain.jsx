@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useRef,useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { MdReply } from "react-icons/md";
@@ -16,6 +16,8 @@ function AdminMain() {
   const members = useSelector((state) => state.auth.members || []);
   const messages = useSelector((state) => state.chatList?.messages || []);
 
+
+  const scrollRef = useRef(null);
   const dispatch = useDispatch();
   
   const [selectedTask, setSelectedTask] = useState(null);
@@ -74,6 +76,15 @@ function AdminMain() {
     }
   };
 
+ 
+
+// Auto-scroll to bottom whenever messages change
+useEffect(() => {
+  if (scrollRef.current) {
+    scrollRef.current.scrollIntoView({ behavior: "smooth" });
+  }
+}, [messages]); // Dependency array ensures this runs when a new message arrives
+
   // --- 3. Statistics Logic ---
   const inProgressTasks = tasks.filter((t) => t.status === "In Progress");
   const completedTasks = tasks.filter((t) => t.status === "Completed");
@@ -116,38 +127,59 @@ function AdminMain() {
         ))}
       </div>
 
-      {/* --- 💬 MODAL: CHAT UI --- */}
-      {msgPop && msgTask && (
+   
+{/* --- 💬 MODAL: CHAT UI --- */}
+
+{msgPop && msgTask && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md transition-opacity" onClick={() => { setMsgPop(false); setMsgTask(null); dispatch(clearMessages()); }} />
+          {/* Backdrop Overlay */}
+          <div 
+            className="absolute inset-0 bg-slate-900/60 backdrop-blur-md transition-opacity" 
+            onClick={() => { setMsgPop(false); setMsgTask(null); dispatch(clearMessages()); }}
+          />
           
-          <div className="relative w-full max-w-2xl h-[75vh] bg-white rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col border border-slate-100 animate-in zoom-in-95 duration-200">
+          {/* Modal Container */}
+          <div className="relative w-full max-w-lg h-[87vh] bg-white rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col border border-slate-100 animate-in zoom-in-95 duration-200">
             
-            {/* Header */}
-            <div className="p-6 border-b border-slate-50 bg-white/95 backdrop-blur-md sticky top-0 z-10">
+            {/* Header Section */}
+            <div className="p-5 border-b border-slate-50 bg-white/95 backdrop-blur-md sticky top-0 z-10">
               <div className="flex justify-between items-start">
-                <div className="flex flex-col gap-1.5">
-                  <h2 className="font-black text-xl text-slate-800 tracking-tight leading-none">{msgTask.taskTitle}</h2>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[9px] font-black text-slate-400 bg-slate-50 border border-slate-100 px-2.5 py-1 rounded-lg uppercase tracking-widest">ID: {msgTask.taskId || msgTask.id || "N/A"}</span>
-                    <span className="text-[9px] font-black text-indigo-500 bg-indigo-50 px-2.5 py-1 rounded-lg uppercase tracking-widest">Assigned To: {msgTask.assignedToName || "Admin"}</span>
+                <div className="flex flex-col gap-1">
+                  <h2 className="font-black text-lg text-slate-800 tracking-tight leading-none">
+                    {msgTask.taskTitle}
+                  </h2>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[8px] font-black text-slate-400 bg-slate-50 border border-slate-100 px-2 py-0.5 rounded-md uppercase tracking-widest">
+                      ID: {msgTask.taskId?.substring(0,8) || msgTask.id?.substring(0,8) || "N/A"}
+                    </span>
+                    <span className="text-[8px] font-black text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded-md uppercase tracking-widest">
+                      To: {msgTask.assignedToName || "Admin"}
+                    </span>
                   </div>
                 </div>
-                <button onClick={() => { setMsgPop(false); setMsgTask(null); dispatch(clearMessages()); }} className="p-2 hover:bg-rose-50 text-slate-400 hover:text-rose-500 rounded-2xl transition-all">
-                  <FiX size={20} />
+                <button 
+                                   onClick={() => { setMsgPop(false); setMsgTask(null); dispatch(clearMessages()); }}
+                  className="p-2 hover:bg-rose-50 text-slate-400 hover:text-rose-500 rounded-2xl transition-all"
+                >
+                  <FiX size={18} />
                 </button>
               </div>
             </div>
 
-            {/* Messages - Scrollbar Hidden */}
-            <div className="flex-1 overflow-y-auto px-6 py-4 bg-[#fafbff] space-y-6 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+            {/* Messages Area */}
+            <div 
+              className="flex-1 overflow-y-auto px-4 py-4 bg-[#fafbff] space-y-6 scrollbar-hide" 
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            >
               <style dangerouslySetInnerHTML={{ __html: `.scrollbar-hide::-webkit-scrollbar { display: none; }`}} />
+              
               {messages.length === 0 && (
                 <div className="flex flex-col items-center justify-center h-full text-slate-300 opacity-50 py-10">
                   <FiActivity size={32} className="mb-3 animate-pulse" />
                   <p className="text-[11px] font-black uppercase tracking-widest">No history</p>
                 </div>
               )}
+
               {messages.map((message, index) => {
                 const isMe = message.senderId === user.uid;
                 const msgDate = message.createdAt?.toDate ? message.createdAt.toDate() : new Date();
@@ -156,18 +188,31 @@ function AdminMain() {
                 return (
                   <div key={message.id || index}>
                     {showDate && (
-                      <div className="flex items-center justify-center my-8">
+                      <div className="flex items-center justify-center my-6">
                         <div className="h-[1px] bg-slate-100 flex-1" />
-                        <span className="mx-4 text-[8px] font-black text-slate-400 uppercase tracking-[0.2em]">{msgDate.toDateString()}</span>
+                        <span className="mx-4 text-[8px] font-black text-slate-300 uppercase tracking-[0.2em]">
+                          {msgDate.toDateString()}
+                        </span>
                         <div className="h-[1px] bg-slate-100 flex-1" />
                       </div>
                     )}
+
                     <div className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
-                      <div className={`flex flex-col ${isMe ? "items-end" : "items-start"} max-w-[82%]`}>
-                        {!isMe && <span className="text-[9px] font-black text-slate-400 mb-1.5 ml-2 uppercase">{message.senderName}</span>}
-                        <div className={`p-4 rounded-[1.5rem] shadow-sm border ${isMe ? "bg-indigo-600 border-indigo-500 text-white rounded-tr-none" : "bg-white border-slate-100 text-slate-700 rounded-tl-none"}`}>
-                          <p className="text-[13px] leading-relaxed font-medium">{message.text}</p>
-                          <div className={`text-[8px] font-black mt-2 uppercase ${isMe ? "text-indigo-200" : "text-slate-400"}`}>
+                      <div className={`flex flex-col ${isMe ? "items-end" : "items-start"} max-w-[88%]`}>
+                        {!isMe && (
+                          <span className="text-[9px] font-black text-slate-400 mb-1 ml-2 uppercase">
+                            {message.senderName}
+                          </span>
+                        )}
+                        <div className={`p-3.5 rounded-[1.2rem] shadow-sm border ${
+                          isMe 
+                            ? "bg-indigo-600 border-indigo-500 text-white rounded-tr-none" 
+                            : "bg-white border-slate-100 text-slate-700 rounded-tl-none"
+                        }`}>
+                          <p className="text-[12px] leading-relaxed font-medium">
+                            {message.text}
+                          </p>
+                          <div className={`text-[7px] font-black mt-1.5 uppercase ${isMe ? "text-indigo-200" : "text-slate-400"}`}>
                             {msgDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                           </div>
                         </div>
@@ -176,15 +221,18 @@ function AdminMain() {
                   </div>
                 );
               })}
+
+              {/* ✨ THE SCROLL ANCHOR - Keeps the view at the bottom */}
+              <div ref={scrollRef} />
             </div>
 
-            {/* Input Bar */}
-            <div className="p-6 bg-white border-t border-slate-50">
-              <div className="relative flex items-center gap-3">
+            {/* Input Bar Section */}
+            <div className="p-4 bg-white border-t border-slate-50">
+              <div className="relative flex items-center gap-2">
                 <input
                   type="text"
                   placeholder="Type message..."
-                  className="flex-1 bg-slate-50 border border-slate-100 rounded-[1.2rem] px-5 py-4 text-sm font-medium focus:ring-4 focus:ring-indigo-500/5 focus:bg-white outline-none transition-all"
+                  className="flex-1 bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3 text-sm font-medium focus:ring-4 focus:ring-indigo-500/5 focus:bg-white outline-none transition-all"
                   value={text}
                   onChange={(e) => setText(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleSend()}
@@ -192,10 +240,24 @@ function AdminMain() {
                 <button
                   disabled={!text.trim() || isSaving}
                   onClick={handleSend}
-                  className={`flex items-center justify-center w-14 h-14 rounded-[1.2rem] transition-all ${text.trim() ? "bg-indigo-600 text-white shadow-lg shadow-indigo-100 hover:bg-indigo-700 hover:-translate-y-0.5" : "bg-slate-50 text-slate-300 border border-slate-100"}`}
+                  className={`flex items-center justify-center w-12 h-12 rounded-2xl transition-all ${
+                    text.trim() 
+                      ? "bg-indigo-600 text-white shadow-lg shadow-indigo-100 hover:bg-indigo-700" 
+                      : "bg-slate-50 text-slate-300 border border-slate-100"
+                  }`}
                 >
-                  {isSaving ? <FiLoader className="animate-spin" size={20} /> : (
-                    <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6 transform rotate-45 -translate-x-0.5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  {isSaving ? (
+                    <FiLoader className="animate-spin" size={18} />
+                  ) : (
+                    <svg 
+                      viewBox="0 0 24 24" 
+                      fill="none" 
+                      className="w-5 h-5 transform rotate-45 -translate-x-0.5" 
+                      stroke="currentColor" 
+                      strokeWidth="2.5" 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round"
+                    >
                       <line x1="22" y1="2" x2="11" y2="13"></line>
                       <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
                     </svg>
@@ -206,6 +268,8 @@ function AdminMain() {
           </div>
         </div>
       )}
+
+
 
       {/* Stats Detail Modal */}
       {activeModal && (
