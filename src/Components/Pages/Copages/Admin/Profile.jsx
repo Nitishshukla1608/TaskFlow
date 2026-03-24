@@ -227,7 +227,7 @@ function Profile() {
               {!isEditing && (
                 <button
                   onClick={handleLogout}
-                  className="flex items-center gap-2 px-5 py-2.5 bg-white/20 backdrop-blur-md text-white border border-white/30 rounded-2xl font-bold hover:bg-rose-500 hover:border-rose-500 transition-all active:scale-95 shadow-lg"
+                  className="flex items-center gap-2 px-5 py-2.5 bg-white/20 backdrop-blur-md text-white border border-white/30 rounded-2xl font-bold hover:bg-rose-400 hover:border-rose-500 transition-all active:scale-95 shadow-lg"
                 >
                   <LogOut size={18} /> Logout
                 </button>
@@ -235,7 +235,7 @@ function Profile() {
               <button
                 onClick={() => setIsEditing(!isEditing)}
                 className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-bold transition-all shadow-lg active:scale-95 ${
-                  isEditing ? "bg-rose-500 text-white" : "bg-white text-slate-800"
+                  isEditing ? "bg-rose-400 text-white" : "bg-white text-slate-800"
                 }`}
               >
                 {isEditing ? <><X size={18} /> Cancel</> : <><Edit3 size={18} /> Edit Profile</>}
