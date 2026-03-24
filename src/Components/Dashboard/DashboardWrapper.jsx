@@ -8,6 +8,7 @@ import AdminMain from "../../Mains/AdminMain";
 import EmployeeMain from "../../Mains/EmployeeMain";
 import CRA_Task from "../../Components/Pages/Copages/Admin/CRA_Task";
 import { AddUser } from "../../Components/Pages/Copages/Admin/AddUser";
+import PremiumPricing from "../Pages/PremiumPricing"
 // Ensure this is imported correctly and renamed to PascalCase
 import ForgotPassword from "../Pages/ForgotPass"; 
 
@@ -23,7 +24,7 @@ const DashboardWrapper = () => {
           <Route path="create-task" element={<CRA_Task />} />
           <Route path="add-user" element={<AddUser />} />
           <Route path="profile" element={<Profile1 />} />
-        
+        <Route path="premium" element={<PremiumPricing/>}/>
         </Route>
       </Route>
 
@@ -32,7 +33,7 @@ const DashboardWrapper = () => {
         <Route path="EmployeeDashboard" element={<EmployeeDashboard />}>
           <Route index element={<EmployeeMain />} />
           <Route path="profile" element={<Profile1 />} />
-   
+   <Route path="premium" element={<PremiumPricing/>}/>
         </Route>
       </Route>
 

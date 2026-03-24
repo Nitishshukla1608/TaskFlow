@@ -6,25 +6,22 @@ import {
   FiUser, 
   FiMoon, 
   FiSun,
-  FiSearch
+  FiSearch 
 } from "react-icons/fi";
+import { FaCrown } from "react-icons/fa"; // Fixed: FaCrown comes from 'fa' pack
 import { useSelector } from "react-redux";
-
-
-
 
 function Header() {
   const [darkMode, setDarkMode] = useState(false);
-  const [text, setText] = useState("")
+  const [text, setText] = useState("");
   
   // 1. Get user data from Redux
   const user = useSelector((state) => state.auth.user);
   
   // 2. Logic for display name and role
-  // We use user?.name (from Firestore) or fallback to display/email
   const fullName = user?.name || user?.displayName || user?.email?.split('@')[0] || 'User';
   const firstName = fullName.split(' ')[0];
-  const userRole = user?.role || "Member"; // Pulls 'Admin' or 'Employee'
+  const userRole = user?.role || "Member";
 
   return (
     <header className="sticky top-0 z-50 w-full h-20 bg-white/80 backdrop-blur-md border-b border-slate-100 flex items-center justify-between px-8 shadow-sm">
@@ -44,17 +41,17 @@ function Header() {
         </div>
       </div>
 
-      {/* CENTER: SEARCH BAR (Adds to the "Professional" look) */}
+      {/* CENTER: SEARCH BAR */}
       <div className="hidden lg:flex flex-1 max-w-md mx-10">
         <div className="relative w-full">
           <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
           <input 
-  type="text" 
-  placeholder="Search tasks or team member..."
-  onChange={(e) => setText(e.target.value)}
-  value={text}
-  className="w-full bg-slate-50 border-none rounded-2xl py-2.5 pl-12 pr-4 text-sm focus:ring-2 focus:ring-indigo-500/20 transition-all outline-none"
-/>
+            type="text" 
+            placeholder="Search tasks or team member..."
+            onChange={(e) => setText(e.target.value)}
+            value={text}
+            className="w-full bg-slate-50 border-none rounded-2xl py-2.5 pl-12 pr-4 text-sm focus:ring-2 focus:ring-indigo-500/20 transition-all outline-none"
+          />
         </div>
       </div>
 
@@ -62,8 +59,9 @@ function Header() {
       <div className="flex items-center gap-3">
         
         {/* User Info & Role Tag */}
-        <div className="flex flex-col items-end text-right">
-       
+        <div className="flex flex-col items-end text-right hidden sm:flex">
+          {/* Fixed: Actually rendering the name now */}
+         
           <span className={`mt-1 px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-tighter ${
             userRole === 'Admin' 
             ? 'bg-amber-100 text-amber-700 border border-amber-200' 
@@ -78,16 +76,27 @@ function Header() {
         {/* Action Buttons */}
         <div className="flex items-center gap-1 sm:gap-2">
 
-{/* Messages */}
-        <button className="relative p-2.5 text-slate-500 hover:bg-slate-50 hover:text-indigo-600 rounded-xl transition-all group">
+          {/* Messages */}
+          <button className="relative p-2.5 text-slate-500 hover:bg-slate-50 hover:text-indigo-600 rounded-xl transition-all group">
             <FiMessageSquare size={20} />
             <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-red-500 border-2 border-white rounded-full group-hover:scale-125 transition-transform"></span>
           </button>
 
+          {/* Premium icon */}
+          <Link
+          to="premium"
+          className="ml-2 flex items-center gap-2 group p-1 pr-1 rounded-2xl hover:bg-slate-50 transition-all border border-transparent hover:border-slate-100"
+        >
+          <div className="w-10 h-10 bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center rounded-xl shadow-md group-hover:shadow-indigo-200 transition-all overflow-hidden">
+            
+              <FaCrown size={20} className="text-white" />
+          
+          </div>
+        </Link>
+
           {/* Notifications */}
           <button className="relative p-2.5 text-slate-500 hover:bg-slate-50 hover:text-indigo-600 rounded-xl transition-all group">
             <FiBell size={20} />
-          
             <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-red-500 border-2 border-white rounded-full group-hover:scale-125 transition-transform"></span>
           </button>
 
@@ -103,11 +112,11 @@ function Header() {
         {/* Profile Avatar */}
         <Link
           to="profile"
-          className="ml-2 flex items-center gap-2 group p-1 pr-3 rounded-2xl hover:bg-slate-50 transition-all border border-transparent hover:border-slate-100"
+          className="ml-2 flex items-center gap-2 group p-1 pr-1 rounded-2xl hover:bg-slate-50 transition-all border border-transparent hover:border-slate-100"
         >
-          <div className="w-10 h-10 bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center rounded-xl shadow-md group-hover:shadow-indigo-200 transition-all">
+          <div className="w-10 h-10 bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center rounded-xl shadow-md group-hover:shadow-indigo-200 transition-all overflow-hidden">
             {user?.photoURL ? (
-              <img src={user.photoURL} alt="profile" className="w-full h-full rounded-xl object-cover" />
+              <img src={user.photoURL} alt="profile" className="w-full h-full object-cover" />
             ) : (
               <FiUser size={20} className="text-white" />
             )}
