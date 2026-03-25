@@ -83,7 +83,7 @@ function Header() {
           </button>
 
           {/* Premium icon */}
-          <Link
+          {user.role == "Admin" && (<Link
           to="premium"
           className="ml-2 flex items-center gap-2 group p-1 pr-1 rounded-2xl hover:bg-slate-50 transition-all border border-transparent hover:border-slate-100"
         >
@@ -93,7 +93,7 @@ function Header() {
           
           </div>
         </Link>
-
+)}
           {/* Notifications */}
           <button className="relative p-2.5 text-slate-500 hover:bg-slate-50 hover:text-indigo-600 rounded-xl transition-all group">
             <FiBell size={20} />

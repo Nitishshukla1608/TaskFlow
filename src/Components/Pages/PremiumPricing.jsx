@@ -1,15 +1,20 @@
 import React, { useState } from "react";
+import { useDispatch } from "react-redux";
 import { FiCheck, FiZap, FiStar, FiShield, FiArrowRight } from "react-icons/fi";
 import { FaCrown } from "react-icons/fa";
+import { Link } from "react-router-dom";
+// Ensure this path matches your Redux slice file exactly
+import { setPlanData, setIsFreeTrial } from "../../Context/PlanContext";
 
 const PremiumPricing = () => {
-  const [billingCycle, setBillingCycle] = useState("monthly"); // 'monthly', 'quarterly', 'semi', 'annual'
+  const [billingCycle, setBillingCycle] = useState("monthly");
+  const dispatch = useDispatch();
 
   const plans = {
-    monthly: { price: "9.99", period: "month", savings: null },
-    quarterly: { price: "24.99", period: "3 months", savings: "15% Off" },
-    semi: { price: "45.99", period: "6 months", savings: "25% Off" },
-    annual: { price: "79.99", period: "year", savings: "35% Off" },
+    monthly: { price: "9.99", period: "1 month", savings: "5% Off", actualPrice: "10.52", type: "monthly" },
+    quarterly: { price: "24.99", period: "3 months", savings: "15% Off", actualPrice: "29.44", type: "quarterly" },
+    semi: { price: "45.99", period: "6 months", savings: "25% Off", actualPrice: "61.32", type: "semi-annual" },
+    annual: { price: "79.99", period: "1 year", savings: "35% Off", actualPrice: "122.92", type: "annual" },
   };
 
   return (
@@ -32,7 +37,7 @@ const PremiumPricing = () => {
         
         {/* CARD 1: 1 MONTH FREE TRIAL */}
         <div className="bg-white rounded-[2.5rem] p-10 border border-slate-100 shadow-sm relative overflow-hidden group hover:border-indigo-100 transition-all">
-          <div className="absolute top-0 right-0  p-8 opacity-5 text-slate-900">
+          <div className="absolute top-0 right-0 p-8 opacity-5 text-slate-900">
             <FiZap size={100} />
           </div>
           
@@ -53,15 +58,20 @@ const PremiumPricing = () => {
               <FeatureItem text="Email support" />
               <FeatureItem text="Mobile App access" />
               <FeatureItem text="Only 50 members" />
+              <FeatureItem text="Unlimited Tasks" />
             </ul>
 
-           <Link to="free-trial">
-           <button 
-            
-            className="w-full py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold text-sm hover:bg-slate-200 transition-all flex items-center justify-center gap-2">
-               Start Free Trial <FiArrowRight />
-             </button>
-           </Link>
+            <Link to="free-trial">
+              <button
+                onClick={() => {
+                  dispatch(setPlanData(plans.monthly)); // Trial is always based on monthly
+                  dispatch(setIsFreeTrial(true));
+                }}
+                className="w-full py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold text-sm hover:bg-slate-200 transition-all flex items-center justify-center gap-2"
+              >
+                Start Free Trial <FiArrowRight />
+              </button>
+            </Link>
           </div>
         </div>
 
@@ -96,11 +106,16 @@ const PremiumPricing = () => {
               <span className="text-slate-400 font-bold text-sm">/ {plans[billingCycle].period}</span>
             </div>
             
-            {plans[billingCycle].savings && (
-              <span className="text-emerald-500 text-[10px] font-black uppercase tracking-widest bg-emerald-50 px-2 py-1 rounded-md">
-                Save {plans[billingCycle].savings}
-              </span>
-            )}
+            <div className="flex items-center gap-2 mb-8">
+               <span className="line-through text-sm font-bold text-red-400">
+                 ${plans[billingCycle].actualPrice}
+               </span>
+               {plans[billingCycle].savings && (
+                 <span className="text-emerald-500 text-[10px] font-black uppercase tracking-widest bg-emerald-50 px-2 py-1 rounded-md">
+                   Save {plans[billingCycle].savings}
+                 </span>
+               )}
+            </div>
 
             <ul className="space-y-4 mt-8 mb-10">
               <FeatureItem text="Unlimited Projects" isPro />
@@ -111,12 +126,19 @@ const PremiumPricing = () => {
               <FeatureItem text="Unlimited Team size" isPro />
             </ul>
 
-            <button className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold text-sm hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all flex items-center justify-center gap-2">
-              Upgrade to Pro <FiStar />
-            </button>
+            <Link to="paidplan"> 
+              <button 
+                onClick={() => {
+                  dispatch(setPlanData(plans[billingCycle]));
+                  dispatch(setIsFreeTrial(false)); // Paid plan, not a trial
+                }}
+                className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold text-sm hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all flex items-center justify-center gap-2"
+              >
+                Upgrade to Pro <FiStar />
+              </button>
+            </Link>
           </div>
         </div>
-
       </div>
 
       {/* Trust Badges */}
