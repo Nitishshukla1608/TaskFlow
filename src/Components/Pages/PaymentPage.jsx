@@ -30,9 +30,13 @@ function PaymentPage() {
   
 
   const handleRazorpay = async () => {
-    if (loading) return;
+    if (loading) return;  // it means payment is already in progress...
     setLoading(true);
 
+    alert("Payment feature coming soon.....")
+    setLoading(false);
+    return;
+   
     try {
       const functions = getFunctions();
       const createOrder = httpsCallable(functions, "createOrder");
@@ -77,6 +81,10 @@ function PaymentPage() {
       setLoading(false);
     }
   };
+
+
+
+
 
   return (
     <div className="min-h-screen bg-[#f8fafc] p-6 md:p-12 font-sans text-slate-900">
