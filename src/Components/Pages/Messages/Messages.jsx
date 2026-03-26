@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { FiSend, FiSearch, FiMoreVertical, FiUser } from "react-icons/fi";
 import { useSelector } from "react-redux";
 import { db } from "../../../firebase"; 
@@ -16,13 +16,21 @@ import {
 const Messages = () => {
   const [selectedUser, setSelectedUser] = useState(null);
   const [messages, setMessages] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
   const [inputText, setInputText] = useState("");
-  
-  // Create a ref for the scrollable container specifically
   const containerRef = useRef();
 
+  // Get data from Redux
   const loginUser = useSelector((state) => state.auth?.user) || null;
   const members = useSelector((state) => state.auth?.members) || [];
+
+  // Filter members logic
+  const filteredMembers = useMemo(() => {
+    return members.filter((member) => {
+      const name = (member.name || member.displayName || "").toLowerCase();
+      return name.includes(searchTerm.toLowerCase()) && member.uid !== loginUser?.uid;
+    });
+  }, [members, searchTerm, loginUser]);
 
   const getChatId = (id1, id2) => [id1, id2].sort().join("_");
 
@@ -41,12 +49,11 @@ const Messages = () => {
     return () => unsubscribe();
   }, [selectedUser, loginUser]);
 
-  // FIXED: Auto-scroll that only affects the chat container
+  // Auto-scroll logic
   useEffect(() => {
     if (containerRef.current) {
-      const container = containerRef.current;
-      container.scrollTo({
-        top: container.scrollHeight,
+      containerRef.current.scrollTo({
+        top: containerRef.current.scrollHeight,
         behavior: "smooth",
       });
     }
@@ -60,24 +67,28 @@ const Messages = () => {
     const msgRef = collection(db, "direct_messages", chatId, "messages");
     const chatDocRef = doc(db, "direct_messages", chatId);
 
-    // FIXED typo: updaedAt -> updatedAt
-    await setDoc(chatDocRef, {
-      participants: [loginUser.uid, selectedUser.uid],
-      lastMessage: inputText,
-      updatedAt: serverTimestamp()
-    }, { merge: true });
+    const messageToSend = inputText;
+    setInputText(""); // Clear input immediately for better UX
 
-    await addDoc(msgRef, {
-      text: inputText,
-      senderId: loginUser.uid,
-      timestamp: serverTimestamp()
-    });
+    try {
+      await setDoc(chatDocRef, {
+        participants: [loginUser.uid, selectedUser.uid],
+        lastMessage: messageToSend,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
 
-    setInputText("");
+      await addDoc(msgRef, {
+        text: messageToSend,
+        senderId: loginUser.uid,
+        timestamp: serverTimestamp()
+      });
+    } catch (err) {
+      console.error("Error sending message:", err);
+    }
   };
 
   return (  
-    <div className="flex h-[calc(100vh-80px)] bg-white shadow-xl border mb-7 border-slate-100 overflow-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+    <div className="flex h-[calc(100vh-80px)] bg-white shadow-xl border mb-7 border-slate-100 overflow-hidden">
       
       {/* --- SIDEBAR --- */}
       <div className="w-80 border-r border-slate-50 flex flex-col bg-slate-50/30">
@@ -86,6 +97,8 @@ const Messages = () => {
           <div className="relative">
             <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search teammates..." 
               className="w-full bg-white border-none rounded-xl py-2.5 pl-10 text-sm shadow-sm focus:ring-2 focus:ring-indigo-500/20 outline-none" 
             />
@@ -93,24 +106,29 @@ const Messages = () => {
         </div>
 
         <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {members
-            .filter(m => m.uid !== loginUser?.uid)
-            .map((member) => (
-            <UserItem 
-              key={member.uid}
-              name={member.name || member.displayName || "User"} 
-              role={member.role || "Member"} 
-              active={selectedUser?.uid === member.uid} 
-              onClick={() => setSelectedUser(member)} 
-            />
-          ))}
+          {filteredMembers.length > 0 ? (
+            filteredMembers.map((member) => (
+              <UserItem 
+                key={member.uid}
+                name={member.name || member.displayName || "User"} 
+                role={member.role || "Member"} 
+                active={selectedUser?.uid === member.uid} 
+                onClick={() => setSelectedUser(member)} 
+              />
+            ))
+          ) : (
+            <p className="text-center text-slate-400 text-xs mt-4">
+              {searchTerm ? "No teammates found" : "No other members"}
+            </p>
+          )}
         </div>
-      </div>    
+      </div>
 
       {/* --- CHAT WINDOW --- */}
       <div className="flex-1 flex flex-col bg-white">
         {selectedUser ? (
           <>
+            {/* Header */}
             <div className="p-5 border-b border-slate-50 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center font-black">
@@ -126,10 +144,10 @@ const Messages = () => {
               <button className="text-slate-400 hover:text-slate-600"><FiMoreVertical /></button>
             </div>
 
-            {/* FIXED: Added containerRef here to capture the local scroll */}
+            {/* Messages Area */}
             <div 
               ref={containerRef} 
-           className="flex-1 overflow-y-auto p-8 space-y-4 bg-slate-50/20 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              className="flex-1 overflow-y-auto p-8 space-y-4 bg-slate-50/20 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             >
               {messages.map((m) => (
                 <MessageBubble 
@@ -141,6 +159,7 @@ const Messages = () => {
               ))}
             </div>
 
+            {/* Input Area */}
             <form onSubmit={handleSendMessage} className="p-6 bg-white border-t border-slate-50">
               <div className="flex gap-3 bg-slate-50 p-2 rounded-2xl border border-slate-100 focus-within:border-indigo-200 transition-all">
                 <input 
