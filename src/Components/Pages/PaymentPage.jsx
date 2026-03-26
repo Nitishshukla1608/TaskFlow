@@ -6,7 +6,7 @@ import { getFunctions, httpsCallable } from "firebase/functions";
 import { setIsFreeTrial } from "../../Context/PlanContext";
 
 function PaymentPage() {
-  const navigate = useNavigate();
+  const navigate = useNavigate();    
   const [loading, setLoading] = useState(false);
   const dispatch = useDispatch();
 
