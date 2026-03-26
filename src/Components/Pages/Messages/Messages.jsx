@@ -1,0 +1,206 @@
+import React, { useState, useEffect, useRef } from "react";
+import { FiSend, FiSearch, FiMoreVertical, FiUser } from "react-icons/fi";
+import { useSelector } from "react-redux";
+import { db } from "../../../firebase"; 
+import { 
+  doc, 
+  setDoc, 
+  addDoc, 
+  collection, 
+  query, 
+  orderBy, 
+  onSnapshot, 
+  serverTimestamp 
+} from "firebase/firestore";
+
+const Messages = () => {
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [inputText, setInputText] = useState("");
+  
+  // Create a ref for the scrollable container specifically
+  const containerRef = useRef();
+
+  const loginUser = useSelector((state) => state.auth?.user) || null;
+  const members = useSelector((state) => state.auth?.members) || [];
+
+  const getChatId = (id1, id2) => [id1, id2].sort().join("_");
+
+  // Real-time Listener for Messages
+  useEffect(() => {
+    if (!selectedUser || !loginUser) return;
+
+    const chatId = getChatId(loginUser.uid, selectedUser.uid);
+    const msgRef = collection(db, "direct_messages", chatId, "messages");
+    const q = query(msgRef, orderBy("timestamp", "asc"));
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setMessages(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+
+    return () => unsubscribe();
+  }, [selectedUser, loginUser]);
+
+  // FIXED: Auto-scroll that only affects the chat container
+  useEffect(() => {
+    if (containerRef.current) {
+      const container = containerRef.current;
+      container.scrollTo({
+        top: container.scrollHeight,
+        behavior: "smooth",
+      });
+    }
+  }, [messages]);
+
+  const handleSendMessage = async (e) => {
+    e.preventDefault();
+    if (!inputText.trim() || !selectedUser) return;
+
+    const chatId = getChatId(loginUser.uid, selectedUser.uid);
+    const msgRef = collection(db, "direct_messages", chatId, "messages");
+    const chatDocRef = doc(db, "direct_messages", chatId);
+
+    // FIXED typo: updaedAt -> updatedAt
+    await setDoc(chatDocRef, {
+      participants: [loginUser.uid, selectedUser.uid],
+      lastMessage: inputText,
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+
+    await addDoc(msgRef, {
+      text: inputText,
+      senderId: loginUser.uid,
+      timestamp: serverTimestamp()
+    });
+
+    setInputText("");
+  };
+
+  return (  
+    <div className="flex h-[calc(100vh-80px)] bg-white shadow-xl border mb-7 border-slate-100 overflow-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      
+      {/* --- SIDEBAR --- */}
+      <div className="w-80 border-r border-slate-50 flex flex-col bg-slate-50/30">
+        <div className="p-6">
+          <h3 className="text-xl font-black text-slate-800 mb-4">Messages</h3>
+          <div className="relative">
+            <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input 
+              placeholder="Search teammates..." 
+              className="w-full bg-white border-none rounded-xl py-2.5 pl-10 text-sm shadow-sm focus:ring-2 focus:ring-indigo-500/20 outline-none" 
+            />
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {members
+            .filter(m => m.uid !== loginUser?.uid)
+            .map((member) => (
+            <UserItem 
+              key={member.uid}
+              name={member.name || member.displayName || "User"} 
+              role={member.role || "Member"} 
+              active={selectedUser?.uid === member.uid} 
+              onClick={() => setSelectedUser(member)} 
+            />
+          ))}
+        </div>
+      </div>    
+
+      {/* --- CHAT WINDOW --- */}
+      <div className="flex-1 flex flex-col bg-white">
+        {selectedUser ? (
+          <>
+            <div className="p-5 border-b border-slate-50 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center font-black">
+                  {selectedUser.name?.[0] || "U"}
+                </div>
+                <div>
+                  <h4 className="font-black text-slate-800 text-sm">{selectedUser.name}</h4>
+                  <span className="flex items-center gap-1.5 text-[10px] text-emerald-500 font-bold uppercase tracking-widest">
+                    <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" /> Online
+                  </span>
+                </div>
+              </div>
+              <button className="text-slate-400 hover:text-slate-600"><FiMoreVertical /></button>
+            </div>
+
+            {/* FIXED: Added containerRef here to capture the local scroll */}
+            <div 
+              ref={containerRef} 
+           className="flex-1 overflow-y-auto p-8 space-y-4 bg-slate-50/20 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            >
+              {messages.map((m) => (
+                <MessageBubble 
+                  key={m.id} 
+                  isMe={m.senderId === loginUser.uid} 
+                  text={m.text} 
+                  time={m.timestamp?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} 
+                />
+              ))}
+            </div>
+
+            <form onSubmit={handleSendMessage} className="p-6 bg-white border-t border-slate-50">
+              <div className="flex gap-3 bg-slate-50 p-2 rounded-2xl border border-slate-100 focus-within:border-indigo-200 transition-all">
+                <input 
+                  value={inputText}
+                  onChange={(e) => setInputText(e.target.value)}
+                  placeholder="Type a message..." 
+                  className="flex-1 bg-transparent border-none px-4 py-2 text-sm outline-none" 
+                />
+                <button 
+                  type="submit"
+                  className="bg-indigo-600 text-white p-3 rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all"
+                >
+                  <FiSend size={18} />
+                </button>
+              </div>
+            </form>
+          </>
+        ) : (
+          <div className="flex-1 flex flex-col items-center justify-center text-slate-300">
+            <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+              <FiUser size={40} className="opacity-20" />
+            </div>
+            <p className="font-black uppercase tracking-widest text-[10px]">Select a teammate to start chatting</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// --- HELPER COMPONENTS ---
+
+const UserItem = ({ name, role, active, onClick }) => (
+  <button 
+    onClick={onClick}
+    className={`w-full flex items-center gap-3 p-3 rounded-2xl transition-all ${active ? "bg-indigo-600 text-white shadow-xl shadow-indigo-100" : "hover:bg-white text-slate-600"}`}
+  >
+    <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold ${active ? "bg-white/20" : "bg-slate-200"}`}>
+      {name[0]}
+    </div>
+    <div className="text-left">
+      <p className="text-sm font-black leading-none">{name}</p>
+      <p className={`text-[9px] font-bold uppercase mt-1 ${active ? "text-indigo-100" : "text-slate-400"}`}>{role}</p>
+    </div>
+  </button>
+);
+
+const MessageBubble = ({ isMe, text, time }) => (
+  <div className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
+    <div className="group flex flex-col">
+      <div className={`max-w-sm p-3 rounded-2xl text-sm font-medium shadow-sm ${
+        isMe ? "bg-indigo-600 text-white rounded-tr-none" : "bg-white text-slate-800 rounded-tl-none border border-slate-100"
+      }`}>
+        {text}
+      </div>
+      <span className={`text-[9px] font-bold text-slate-400 mt-1 px-1 ${isMe ? "text-right" : "text-left"}`}>
+        {time || "Sending..."}
+      </span>
+    </div>
+  </div>
+);
+
+export default Messages;

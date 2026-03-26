@@ -77,23 +77,13 @@ function Header() {
         <div className="flex items-center gap-1 sm:gap-2">
 
           {/* Messages */}
-          <button className="relative p-2.5 text-slate-500 hover:bg-slate-50 hover:text-indigo-600 rounded-xl transition-all group">
+         <Link to="messages">
+         <button className="relative p-2.5 text-slate-500 hover:bg-slate-50 hover:text-indigo-600 rounded-xl transition-all group">
             <FiMessageSquare size={20} />
             <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-red-500 border-2 border-white rounded-full group-hover:scale-125 transition-transform"></span>
           </button>
+         </Link>
 
-          {/* Premium icon */}
-          {user.role == "Admin" && (<Link
-          to="premium"
-          className="ml-2 flex items-center gap-2 group p-1 pr-1 rounded-2xl hover:bg-slate-50 transition-all border border-transparent hover:border-slate-100"
-        >
-          <div className="w-10 h-10 bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center rounded-xl shadow-md group-hover:shadow-indigo-200 transition-all overflow-hidden">
-            
-              <FaCrown size={20} className="text-white" />
-          
-          </div>
-        </Link>
-)}
           {/* Notifications */}
           <button className="relative p-2.5 text-slate-500 hover:bg-slate-50 hover:text-indigo-600 rounded-xl transition-all group">
             <FiBell size={20} />
@@ -108,6 +98,22 @@ function Header() {
             {darkMode ? <FiSun size={20} /> : <FiMoon size={20} />}
           </button>
         </div>
+
+
+
+
+          {/* Premium icon */}
+          {user.role == "Admin" && (<Link
+          to="premium"
+          className="ml-2 flex items-center gap-2 group p-1 pr-1 rounded-2xl hover:bg-slate-50 transition-all border border-transparent hover:border-slate-100"
+        >
+          <div className="w-10 h-10 bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center rounded-xl shadow-md group-hover:shadow-indigo-200 transition-all overflow-hidden">
+            
+              <FaCrown size={20} className="text-white" />
+          
+          </div>
+        </Link>
+)}
 
         {/* Profile Avatar */}
         <Link

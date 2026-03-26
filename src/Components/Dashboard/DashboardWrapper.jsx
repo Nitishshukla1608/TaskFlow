@@ -12,6 +12,7 @@ import PremiumPricing from "../Pages/PremiumPricing"
 import FreeTrial from "../Pages/premiumPlans/freeTrial"
 import PaymentPage from "../Pages/PaymentPage"
 import PaidPlan from "../Pages/premiumPlans/paidPlan"
+import Messages from "../Pages/Messages/Messages"
 
 const DashboardWrapper = () => {
   const user = useSelector((state) => state.auth.user);
@@ -25,6 +26,7 @@ const DashboardWrapper = () => {
           <Route path="create-task" element={<CRA_Task />} />
           <Route path="add-user" element={<AddUser />} />
           <Route path="profile" element={<Profile1 />} />
+          <Route path="messages" element={<Messages/>}/>
           <Route path="premium" element={<PremiumPricing/>}/>
           <Route path="premium/free-trial" element={<FreeTrial/>}/>
           <Route path="premium/paidplan" element={<PaidPlan/>}/>
@@ -39,6 +41,7 @@ const DashboardWrapper = () => {
           <Route index element={<EmployeeMain />} />
           <Route path="profile" element={<Profile1 />} />
           <Route path="premium" element={<PremiumPricing/>}/>
+          <Route path="messages" element={<Messages/>}/>
         </Route>
       </Route>
 

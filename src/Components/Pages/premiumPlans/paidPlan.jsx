@@ -19,7 +19,7 @@ function PaidPlan({ onActivate }) {
   }
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="max-w-2xl mx-auto my-10">
       <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-2xl shadow-indigo-100/50 overflow-hidden">
         
         {/* Header Section */}
