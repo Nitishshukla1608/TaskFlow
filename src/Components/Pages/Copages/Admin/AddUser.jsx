@@ -81,7 +81,7 @@ export const AddUser = () => {
       await emailjs.send(
         "service_65pyqaw",
         "template_nelf9do",
-        { email: email, name:name , role:role, regId:regId,posiiton:position , organization:authUser.organization},
+        { email: email, name:name , role:role, regId:regId,posiiton:position , organization:authUser.organization , password:password , user_email:email},
         "uZNzBSBvD3wP6-gBT"
       );
 

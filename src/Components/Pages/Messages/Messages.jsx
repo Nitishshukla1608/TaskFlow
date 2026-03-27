@@ -44,6 +44,8 @@ const Messages = () => {
     return () => unsubscribe();
   }, [selectedUser, loginUser]);
 
+
+  
   useEffect(() => {
     if (containerRef.current) {
       containerRef.current.scrollTo({
@@ -82,7 +84,7 @@ const Messages = () => {
   };
 
   return (  
-    <div className="flex h-[calc(100vh-80px)] md:h-[calc(100vh-120px)] bg-white shadow-xl border md:mb-7 border-slate-100 overflow-hidden relative">
+    <div className="flex h-[calc(100vh-80px)] md:h-[calc(100vh-80px)] bg-white shadow-xl border border-slate-100 overflow-hidden relative">
       
       {/* --- SIDEBAR --- */}
       {/* Added classes: absolute/hidden/md:relative/md:flex to handle mobile visibility */}
@@ -195,18 +197,34 @@ const Messages = () => {
 };
 
 // --- HELPER COMPONENTS ---
-
 const UserItem = ({ name, role, active, onClick }) => (
   <button 
     onClick={onClick}
-    className={`w-full flex items-center gap-3 p-3 rounded-2xl transition-all ${active ? "bg-indigo-600 text-white shadow-xl shadow-indigo-100" : "hover:bg-white text-slate-600"}`}
+    className={`w-full flex items-center gap-3 p-3 rounded-2xl transition-all ${
+      active 
+        ? "bg-indigo-600 text-white shadow-xl shadow-indigo-100" 
+        : "hover:bg-white text-slate-600 bg-transparent"
+    }`}
   >
-    <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold shrink-0 ${active ? "bg-white/20" : "bg-slate-200"}`}>
-      {name[0]}
+    {/* Avatar Circle */}
+    <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold shrink-0 ${
+      active ? "bg-white/20" : "bg-slate-200 text-slate-500"
+    }`}>
+      {name ? name[0].toUpperCase() : "U"}
     </div>
-    <div className="text-left overflow-hidden">
-      <p className="text-sm font-black leading-none truncate">{name}</p>
-      <p className={`text-[9px] font-bold uppercase mt-1 truncate ${active ? "text-indigo-100" : "text-slate-400"}`}>{role}</p>
+
+    {/* Text Content */}
+    <div className="text-left overflow-hidden flex-1">
+      <p className="text-sm font-black leading-none truncate mb-1.5">{name}</p>
+      
+      <div className="flex items-center gap-1.5">
+        {/* Status Dot */}
+        <span className={`w-2 h-2 rounded-full animate-pulse ${
+          role === "Admin" ? "bg-amber-400" : "bg-emerald-400"
+        }`} />
+        
+   
+      </div>
     </div>
   </button>
 );
