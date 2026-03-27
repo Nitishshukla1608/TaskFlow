@@ -92,9 +92,16 @@ function Profile() {
   const handleLogout = async () => {
     if (window.confirm("Are you sure you want to logout?")) {
       try {
+        // Step 1: Tell Firebase to kill the session
         await firebaseSignOut(auth);
-        dispatch(setUser(null));
-        navigate("/login");
+        
+        // Step 2: (Optional but recommended) Clear local storage 
+        // if you store anything there manually
+        localStorage.clear();
+        sessionStorage.clear();
+
+        // NOTE: You don't NEED dispatch(setUser(null)) or navigate here
+        // because your App.js useEffect will catch the change and do it for you!
       } catch (err) {
         console.error("Logout failed", err);
       }

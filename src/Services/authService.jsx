@@ -116,6 +116,7 @@ export const loginUser = async (email, password) => {
   };
 };
 
+
 export const editUser = async (collectionName, uid, data) => {
   try {
     const docRef = doc(db, collectionName, uid);

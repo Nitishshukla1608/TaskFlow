@@ -31,6 +31,7 @@ function App() {
     return () => unsubscribe();
   }, [dispatch]);
 
+  
   // Loading Screen
   if (isInitializing) {
     return (
