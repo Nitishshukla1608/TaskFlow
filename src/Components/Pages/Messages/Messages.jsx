@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import { FiSend, FiSearch, FiMoreVertical, FiUser, FiChevronLeft } from "react-icons/fi"; // Added ChevronLeft
+import { FiSend, FiSearch, FiMoreVertical, FiUser, FiChevronLeft, FiPlus } from "react-icons/fi";
 import { useSelector } from "react-redux";
 import { db } from "../../../firebase"; 
 import { 
@@ -13,11 +13,62 @@ import {
   serverTimestamp 
 } from "firebase/firestore";
 
+// --- MEETING MODAL COMPONENT ---
+const MeetingModal = ({ users, onClose, onCreate }) => {
+  const [selected, setSelected] = useState([]);
+  const toggleUser = (user) => {
+    setSelected(prev =>
+      prev.find(u => u.uid === user.uid)
+        ? prev.filter(u => u.uid !== user.uid)
+        : [...prev, user]
+    );
+  };
+
+  return (
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white p-6 rounded-2xl w-full max-w-md shadow-2xl border border-slate-100">
+        <h2 className="text-xl font-black text-slate-800 mb-4">Create Team Meeting</h2>
+        
+        <div className="max-h-60 overflow-y-auto space-y-2 mb-6 pr-2">
+          {users.map(user => (
+            <label key={user.uid} className="flex items-center gap-3 p-3 hover:bg-slate-50 rounded-xl cursor-pointer border border-transparent hover:border-slate-100 transition-all">
+              <input
+                type="checkbox"
+                className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                checked={!!selected.find(u => u.uid === user.uid)}
+                onChange={() => toggleUser(user)}
+              />
+              <div className="flex flex-col">
+                <span className="text-sm font-bold text-slate-700">{user.name || user.email}</span>
+                <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">{user.role}</span>
+              </div>
+            </label>
+          ))}
+        </div>
+
+        <div className="flex gap-3">
+          <button onClick={onClose} className="flex-1 px-4 py-3 rounded-xl font-bold text-slate-500 hover:bg-slate-100 transition-all">
+            Cancel
+          </button>
+          <button
+            onClick={() => onCreate(selected)}
+            disabled={selected.length === 0}
+            className="flex-1 bg-indigo-600 disabled:opacity-50 text-white px-4 py-3 rounded-xl font-bold shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all"
+          >
+            Start Meeting
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const Messages = () => {
   const [selectedUser, setSelectedUser] = useState(null);
   const [messages, setMessages] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [inputText, setInputText] = useState("");
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const containerRef = useRef();
 
   const loginUser = useSelector((state) => state.auth?.user) || null;
@@ -32,6 +83,7 @@ const Messages = () => {
 
   const getChatId = (id1, id2) => [id1, id2].sort().join("_");
 
+  // Subscribe to messages
   useEffect(() => {
     if (!selectedUser || !loginUser) return;
     const chatId = getChatId(loginUser.uid, selectedUser.uid);
@@ -44,14 +96,10 @@ const Messages = () => {
     return () => unsubscribe();
   }, [selectedUser, loginUser]);
 
-
-  
+  // Auto-scroll to bottom
   useEffect(() => {
     if (containerRef.current) {
-      containerRef.current.scrollTo({
-        top: containerRef.current.scrollHeight,
-        behavior: "smooth",
-      });
+      containerRef.current.scrollTop = containerRef.current.scrollHeight;
     }
   }, [messages]);
 
@@ -83,14 +131,37 @@ const Messages = () => {
     }
   };
 
+  const handleCreateMeeting = (selectedUsers) => {
+   const  emails = selectedUsers.map(user=>user.email)
+    console.log("Creating meeting with:", emails);
+    // Add your meeting logic (e.g., Jitsi/Zoom/Firestore call doc)
+    setIsModalOpen(false);
+  };
+
   return (  
-    <div className="flex h-[calc(100vh-80px)] md:h-[calc(100vh-80px)] bg-white shadow-xl border border-slate-100 overflow-hidden relative">
+    <div className="flex h-[calc(100vh-80px)] bg-white shadow-xl border border-slate-100 overflow-hidden relative">
       
+      {isModalOpen && (
+        <MeetingModal 
+          users={filteredMembers} 
+          onClose={() => setIsModalOpen(false)} 
+          onCreate={handleCreateMeeting} 
+        />
+      )}
+
       {/* --- SIDEBAR --- */}
-      {/* Added classes: absolute/hidden/md:relative/md:flex to handle mobile visibility */}
       <div className={`w-full md:w-80 border-r border-slate-50 flex flex-col bg-slate-50/30 transition-all duration-300 ${selectedUser ? "hidden md:flex" : "flex"}`}>
         <div className="p-6">
-          <h3 className="text-xl font-black text-slate-800 mb-4">Messages</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-black text-slate-800">Messages</h3>
+            <button 
+              onClick={() => setIsModalOpen(true)}
+              className="p-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-all"
+            >
+              <FiPlus size={20} />
+            </button>
+          </div>
+
           <div className="relative">
             <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input 
@@ -102,7 +173,7 @@ const Messages = () => {
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-2">
           {filteredMembers.length > 0 ? (
             filteredMembers.map((member) => (
               <UserItem 
@@ -122,21 +193,15 @@ const Messages = () => {
       </div>
 
       {/* --- CHAT WINDOW --- */}
-      {/* Added dynamic classes to show/hide on mobile */}
       <div className={`flex-1 flex flex-col bg-white transition-all duration-300 ${!selectedUser ? "hidden md:flex" : "flex"}`}>
         {selectedUser ? (
           <>
-            {/* Header */}
+            {/* Chat Header */}
             <div className="p-4 md:p-5 border-b border-slate-50 flex items-center justify-between">
               <div className="flex items-center gap-2 md:gap-3">
-                {/* Back button for mobile only */}
-                <button 
-                  onClick={() => setSelectedUser(null)} 
-                  className="p-2 -ml-2 text-slate-400 md:hidden"
-                >
+                <button onClick={() => setSelectedUser(null)} className="p-2 -ml-2 text-slate-400 md:hidden">
                   <FiChevronLeft size={24} />
                 </button>
-
                 <div className="w-9 h-9 md:w-10 md:h-10 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center font-black">
                   {selectedUser.name?.[0] || "U"}
                 </div>
@@ -151,16 +216,13 @@ const Messages = () => {
             </div>
 
             {/* Messages Area */}
-            <div 
-              ref={containerRef} 
-              className="flex-1 overflow-y-auto p-4 md:p-8 space-y-4 bg-slate-50/20 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-            >
+            <div ref={containerRef} className="flex-1 overflow-y-auto p-4 md:p-8 space-y-4 bg-slate-50/20 scroll-smooth">
               {messages.map((m) => (
                 <MessageBubble 
                   key={m.id} 
                   isMe={m.senderId === loginUser.uid} 
                   text={m.text} 
-                  time={m.timestamp?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} 
+                  time={m.timestamp?.toDate ? m.timestamp.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Sending..."} 
                 />
               ))}
             </div>
@@ -174,10 +236,7 @@ const Messages = () => {
                   placeholder="Type a message..." 
                   className="flex-1 bg-transparent border-none px-3 md:px-4 py-2 text-sm outline-none" 
                 />
-                <button 
-                  type="submit"
-                  className="bg-indigo-600 text-white p-2.5 md:p-3 rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all"
-                >
+                <button type="submit" className="bg-indigo-600 text-white p-2.5 md:p-3 rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all">
                   <FiSend size={18} />
                 </button>
               </div>
@@ -186,7 +245,7 @@ const Messages = () => {
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center text-slate-300">
             <div className="w-16 h-16 md:w-20 md:h-20 bg-slate-50 rounded-full flex items-center justify-center mb-4">
-              <FiUser size={36} className="opacity-20 md:size-[40px]" />
+              <FiUser size={36} className="opacity-20" />
             </div>
             <p className="font-black uppercase tracking-widest text-[9px] md:text-[10px]">Select a teammate to start chatting</p>
           </div>
@@ -198,32 +257,15 @@ const Messages = () => {
 
 // --- HELPER COMPONENTS ---
 const UserItem = ({ name, role, active, onClick }) => (
-  <button 
-    onClick={onClick}
-    className={`w-full flex items-center gap-3 p-3 rounded-2xl transition-all ${
-      active 
-        ? "bg-indigo-600 text-white shadow-xl shadow-indigo-100" 
-        : "hover:bg-white text-slate-600 bg-transparent"
-    }`}
-  >
-    {/* Avatar Circle */}
-    <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold shrink-0 ${
-      active ? "bg-white/20" : "bg-slate-200 text-slate-500"
-    }`}>
+  <button onClick={onClick} className={`w-full flex items-center gap-3 p-3 rounded-2xl transition-all ${active ? "bg-indigo-600 text-white shadow-xl shadow-indigo-100" : "hover:bg-white text-slate-600 bg-transparent"}`}>
+    <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold shrink-0 ${active ? "bg-white/20" : "bg-slate-200 text-slate-500"}`}>
       {name ? name[0].toUpperCase() : "U"}
     </div>
-
-    {/* Text Content */}
     <div className="text-left overflow-hidden flex-1">
       <p className="text-sm font-black leading-none truncate mb-1.5">{name}</p>
-      
       <div className="flex items-center gap-1.5">
-        {/* Status Dot */}
-        <span className={`w-2 h-2 rounded-full animate-pulse ${
-          role === "Admin" ? "bg-amber-400" : "bg-emerald-400"
-        }`} />
-        
-   
+        <span className={`w-1.5 h-1.5 rounded-full ${role === "Admin" ? "bg-amber-400" : "bg-emerald-400"}`} />
+        <span className={`text-[10px] font-bold uppercase tracking-tight ${active ? "text-indigo-100" : "text-slate-400"}`}>{role}</span>
       </div>
     </div>
   </button>
@@ -232,13 +274,11 @@ const UserItem = ({ name, role, active, onClick }) => (
 const MessageBubble = ({ isMe, text, time }) => (
   <div className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
     <div className="group flex flex-col max-w-[85%] md:max-w-sm">
-      <div className={`p-3 md:p-4 rounded-2xl text-sm font-medium shadow-sm ${
-        isMe ? "bg-indigo-600 text-white rounded-tr-none" : "bg-white text-slate-800 rounded-tl-none border border-slate-100"
-      }`}>
+      <div className={`p-3 md:p-4 rounded-2xl text-sm font-medium shadow-sm ${isMe ? "bg-indigo-600 text-white rounded-tr-none" : "bg-white text-slate-800 rounded-tl-none border border-slate-100"}`}>
         {text}
       </div>
       <span className={`text-[9px] font-bold text-slate-400 mt-1 px-1 ${isMe ? "text-right" : "text-left"}`}>
-        {time || "Sending..."}
+        {time}
       </span>
     </div>
   </div>
