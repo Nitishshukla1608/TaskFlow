@@ -1,7 +1,7 @@
 import React, { useEffect } from "react";
 import Header from "../Headooter/Header";
 import Footer from "../Headooter/Footer";
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 
 import {
@@ -16,6 +16,7 @@ import { setUser, setTasks, setMembers, setOrganizations } from "../../Context/A
 
 function AdminDashboard() {
   const dispatch = useDispatch();
+  const location = useLocation();
 
   // 🔐 Logged-in auth user from Redux
   const authUser = useSelector((state) => state.auth.user);
@@ -93,6 +94,9 @@ function AdminDashboard() {
     };
   }, [authUser?.uid, authUser?.role, authUser?.organization, dispatch]);
 
+  // Logic to hide footer on messages page
+  const isMessagesPage = location.pathname.endsWith("/messages");
+
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
@@ -101,7 +105,7 @@ function AdminDashboard() {
         <Outlet />
       </main>
 
-      <Footer />
+      {!C && <Footer />}
     </div>
   );
 }

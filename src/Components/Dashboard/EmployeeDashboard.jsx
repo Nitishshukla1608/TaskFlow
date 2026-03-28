@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import Header from '../Headooter/Header';
 import Footer from '../Headooter/Footer';
 import { useSelector, useDispatch } from "react-redux";
@@ -15,6 +15,7 @@ import { setUser, setTasks, setMembers, setOrganizations } from "../../Context/A
 
 function EmployeeDashboard() {
   const dispatch = useDispatch();
+  const location = useLocation();
   const authUser = useSelector((state) => state.auth.user);
 
   /* =========================
@@ -87,13 +88,16 @@ function EmployeeDashboard() {
     };
   }, [authUser?.uid, authUser?.role, authUser?.organization, dispatch]);
 
+  // Logic to hide footer on messages page
+  const isMessagesPage = location.pathname.endsWith("/messages");
+
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
       <main className="flex-1">
         <Outlet />
       </main>
-      <Footer />
+      {!isMessagesPage && <Footer />}
     </div>
   );
 }
