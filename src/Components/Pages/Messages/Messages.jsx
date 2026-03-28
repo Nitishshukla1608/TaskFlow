@@ -28,7 +28,6 @@ const MeetingModal = ({ users, onClose, onCreate }) => {
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-white p-6 rounded-2xl w-full max-w-md shadow-2xl border border-slate-100">
         <h2 className="text-xl font-black text-slate-800 mb-4">Create Team Meeting</h2>
-        
         <div className="max-h-60 overflow-y-auto space-y-2 mb-6 pr-2">
           {users.map(user => (
             <label key={user.uid} className="flex items-center gap-3 p-3 hover:bg-slate-50 rounded-xl cursor-pointer border border-transparent hover:border-slate-100 transition-all">
@@ -45,11 +44,8 @@ const MeetingModal = ({ users, onClose, onCreate }) => {
             </label>
           ))}
         </div>
-
         <div className="flex gap-3">
-          <button onClick={onClose} className="flex-1 px-4 py-3 rounded-xl font-bold text-slate-500 hover:bg-slate-100 transition-all">
-            Cancel
-          </button>
+          <button onClick={onClose} className="flex-1 px-4 py-3 rounded-xl font-bold text-slate-500 hover:bg-slate-100 transition-all">Cancel</button>
           <button
             onClick={() => onCreate(selected)}
             disabled={selected.length === 0}
@@ -67,12 +63,17 @@ const Messages = () => {
   const [selectedUser, setSelectedUser] = useState(null);
   const [messages, setMessages] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
   const [inputText, setInputText] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  
   const containerRef = useRef();
+  const typingTimeoutRef = useRef(null); // Persists timeout across renders
 
   const loginUser = useSelector((state) => state.auth?.user) || null;
   const members = useSelector((state) => state.auth?.members) || [];
+
+  const getChatId = (id1, id2) => [id1, id2].sort().join("_");
 
   const filteredMembers = useMemo(() => {
     return members.filter((member) => {
@@ -81,9 +82,35 @@ const Messages = () => {
     });
   }, [members, searchTerm, loginUser]);
 
-  const getChatId = (id1, id2) => [id1, id2].sort().join("_");
+  // Handle Meeting Creation
+  const handleCreateMeeting = (selectedUsers) => {
+    const emails = selectedUsers.map(user => user.email);
+    console.log("Creating meeting with:", emails);
+    setIsModalOpen(false);
+  };
 
-  // Subscribe to messages
+  // Typing Logic
+  const handleTyping = async (e) => {
+    setInputText(e.target.value);
+    if (!selectedUser || !loginUser) return;
+
+    const chatId = getChatId(loginUser.uid, selectedUser.uid);
+
+    // Mark as typing in Firestore
+    await setDoc(doc(db, "direct_messages", chatId), {
+      [`typing.${loginUser.uid}`]: true
+    }, { merge: true });
+
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+
+    typingTimeoutRef.current = setTimeout(async () => {
+      await setDoc(doc(db, "direct_messages", chatId), {
+        [`typing.${loginUser.uid}`]: false
+      }, { merge: true });
+    }, 1500);
+  };
+
+  // Listen for Messages
   useEffect(() => {
     if (!selectedUser || !loginUser) return;
     const chatId = getChatId(loginUser.uid, selectedUser.uid);
@@ -96,16 +123,32 @@ const Messages = () => {
     return () => unsubscribe();
   }, [selectedUser, loginUser]);
 
-  // Auto-scroll to bottom
+  // Listen for Typing Status
+  useEffect(() => {
+    if (!selectedUser || !loginUser) return;
+    const chatId = getChatId(loginUser.uid, selectedUser.uid);
+    
+    const unsub = onSnapshot(doc(db, "direct_messages", chatId), (snap) => {
+      const typingData = snap.data()?.typing || {};
+      const someoneTyping = Object.entries(typingData).some(
+        ([uid, val]) => uid !== loginUser.uid && val
+      );
+      setIsTyping(someoneTyping);
+    });
+
+    return () => unsub();
+  }, [selectedUser, loginUser]);
+
+  // Auto-scroll
   useEffect(() => {
     if (containerRef.current) {
       containerRef.current.scrollTop = containerRef.current.scrollHeight;
     }
-  }, [messages]);
+  }, [messages, isTyping]);
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (!inputText.trim() || !selectedUser) return;
+    if (!inputText.trim() || !selectedUser || !loginUser) return;
 
     const chatId = getChatId(loginUser.uid, selectedUser.uid);
     const msgRef = collection(db, "direct_messages", chatId, "messages");
@@ -115,10 +158,14 @@ const Messages = () => {
     setInputText(""); 
 
     try {
+      // Clear local typing timeout immediately on send
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+
       await setDoc(chatDocRef, {
         participants: [loginUser.uid, selectedUser.uid],
         lastMessage: messageToSend,
-        updatedAt: serverTimestamp()
+        updatedAt: serverTimestamp(),
+        [`typing.${loginUser.uid}`]: false // Reset typing status
       }, { merge: true });
 
       await addDoc(msgRef, {
@@ -131,16 +178,8 @@ const Messages = () => {
     }
   };
 
-  const handleCreateMeeting = (selectedUsers) => {
-   const  emails = selectedUsers.map(user=>user.email)
-    console.log("Creating meeting with:", emails);
-    // Add your meeting logic (e.g., Jitsi/Zoom/Firestore call doc)
-    setIsModalOpen(false);
-  };
-
   return (  
     <div className="flex h-[calc(100vh-80px)] bg-white shadow-xl border border-slate-100 overflow-hidden relative">
-      
       {isModalOpen && (
         <MeetingModal 
           users={filteredMembers} 
@@ -154,14 +193,10 @@ const Messages = () => {
         <div className="p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-xl font-black text-slate-800">Messages</h3>
-            <button 
-              onClick={() => setIsModalOpen(true)}
-              className="p-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-all"
-            >
+            <button onClick={() => setIsModalOpen(true)} className="p-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-all">
               <FiPlus size={20} />
             </button>
           </div>
-
           <div className="relative">
             <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input 
@@ -172,23 +207,16 @@ const Messages = () => {
             />
           </div>
         </div>
-
         <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-2">
-          {filteredMembers.length > 0 ? (
-            filteredMembers.map((member) => (
-              <UserItem 
-                key={member.uid}
-                name={member.name || member.displayName || "User"} 
-                role={member.role || "Member"} 
-                active={selectedUser?.uid === member.uid} 
-                onClick={() => setSelectedUser(member)} 
-              />
-            ))
-          ) : (
-            <p className="text-center text-slate-400 text-xs mt-4">
-              {searchTerm ? "No teammates found" : "No other members"}
-            </p>
-          )}
+          {filteredMembers.map((member) => (
+            <UserItem 
+              key={member.uid}
+              name={member.name || member.displayName || "User"} 
+              role={member.role || "Member"} 
+              active={selectedUser?.uid === member.uid} 
+              onClick={() => setSelectedUser(member)} 
+            />
+          ))}
         </div>
       </div>
 
@@ -196,12 +224,9 @@ const Messages = () => {
       <div className={`flex-1 flex flex-col bg-white transition-all duration-300 ${!selectedUser ? "hidden md:flex" : "flex"}`}>
         {selectedUser ? (
           <>
-            {/* Chat Header */}
             <div className="p-4 md:p-5 border-b border-slate-50 flex items-center justify-between">
               <div className="flex items-center gap-2 md:gap-3">
-                <button onClick={() => setSelectedUser(null)} className="p-2 -ml-2 text-slate-400 md:hidden">
-                  <FiChevronLeft size={24} />
-                </button>
+                <button onClick={() => setSelectedUser(null)} className="p-2 -ml-2 text-slate-400 md:hidden"><FiChevronLeft size={24} /></button>
                 <div className="w-9 h-9 md:w-10 md:h-10 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center font-black">
                   {selectedUser.name?.[0] || "U"}
                 </div>
@@ -215,7 +240,6 @@ const Messages = () => {
               <button className="text-slate-400 hover:text-slate-600"><FiMoreVertical /></button>
             </div>
 
-            {/* Messages Area */}
             <div ref={containerRef} className="flex-1 overflow-y-auto p-4 md:p-8 space-y-4 bg-slate-50/20 scroll-smooth">
               {messages.map((m) => (
                 <MessageBubble 
@@ -225,14 +249,20 @@ const Messages = () => {
                   time={m.timestamp?.toDate ? m.timestamp.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Sending..."} 
                 />
               ))}
+              {isTyping && (
+                <div className="flex justify-start">
+                  <p className="text-indigo-500 text-[10px] font-bold italic animate-bounce px-2">
+                    {selectedUser.name} is typing...
+                  </p>
+                </div>
+              )}
             </div>
 
-            {/* Input Area */}
             <form onSubmit={handleSendMessage} className="p-4 md:p-6 bg-white border-t border-slate-50">
               <div className="flex gap-3 bg-slate-50 p-2 rounded-2xl border border-slate-100 focus-within:border-indigo-200 transition-all">
                 <input 
                   value={inputText}
-                  onChange={(e) => setInputText(e.target.value)}
+                  onChange={handleTyping}
                   placeholder="Type a message..." 
                   className="flex-1 bg-transparent border-none px-3 md:px-4 py-2 text-sm outline-none" 
                 />
