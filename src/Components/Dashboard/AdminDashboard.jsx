@@ -105,7 +105,7 @@ function AdminDashboard() {
         <Outlet />
       </main>
 
-      {!C && <Footer />}
+      {!isMessagesPage && <Footer />}
     </div>
   );
 }
