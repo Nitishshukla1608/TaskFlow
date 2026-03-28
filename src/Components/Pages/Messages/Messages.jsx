@@ -91,23 +91,35 @@ const Messages = () => {
 
   // Typing Logic
   const handleTyping = async (e) => {
-    setInputText(e.target.value);
+    const value = e.target.value;
+    setInputText(value);
+    
     if (!selectedUser || !loginUser) return;
 
     const chatId = getChatId(loginUser.uid, selectedUser.uid);
+    const chatDocRef = doc(db, "direct_messages", chatId);
 
-    // Mark as typing in Firestore
-    await setDoc(doc(db, "direct_messages", chatId), {
-      [`typing.${loginUser.uid}`]: true
-    }, { merge: true });
+    // Only update Firestore if we haven't already marked as typing
+    // or if we are clearing the timeout
+    try {
+      await setDoc(chatDocRef, {
+        [`typing.${loginUser.uid}`]: true
+      }, { merge: true });
+    } catch (err) {
+      console.error("Error setting typing status:", err);
+    }
 
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
 
     typingTimeoutRef.current = setTimeout(async () => {
-      await setDoc(doc(db, "direct_messages", chatId), {
-        [`typing.${loginUser.uid}`]: false
-      }, { merge: true });
-    }, 1500);
+      try {
+        await setDoc(chatDocRef, {
+          [`typing.${loginUser.uid}`]: false
+        }, { merge: true });
+      } catch (err) {
+        console.error("Error clearing typing status:", err);
+      }
+    }, 2000);
   };
 
   // Listen for Messages
