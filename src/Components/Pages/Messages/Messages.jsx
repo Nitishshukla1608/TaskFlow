@@ -82,13 +82,7 @@ const Messages = () => {
     });
   }, [members, searchTerm, loginUser]);
 
-  const handleCreateMeeting = (selectedUsers) => {
-    const emails = selectedUsers.map(user => user.email);
-    console.log("Creating meeting with:", emails);
-    setIsModalOpen(false);
-  };
-
-  // Typing Logic with Ref fix
+  // --- 1. TYPING SEND LOGIC (Updated to match Screenshot Structure) ---
   const handleTyping = async (e) => {
     const value = e.target.value;
     setInputText(value);
@@ -96,20 +90,25 @@ const Messages = () => {
     if (!selectedUser || !loginUser) return;
     const chatId = getChatId(loginUser.uid, selectedUser.uid);
 
-    await setDoc(doc(db, "direct_messages", chatId), {
-      [`typing.${loginUser.uid}`]: true
-    }, { merge: true });
-
-    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-
-    typingTimeoutRef.current = setTimeout(async () => {
+    try {
+      // Screenshot ke mutabiq dot notation field set kar rahe hain
       await setDoc(doc(db, "direct_messages", chatId), {
-        [`typing.${loginUser.uid}`]: false
+        [`typing.${loginUser.uid}`]: true
       }, { merge: true });
-    }, 2000);
+
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+
+      typingTimeoutRef.current = setTimeout(async () => {
+        await setDoc(doc(db, "direct_messages", chatId), {
+          [`typing.${loginUser.uid}`]: false
+        }, { merge: true });
+      }, 2000);
+    } catch (err) {
+      console.error("Typing Error:", err);
+    }
   };
 
-  // Messages Listener
+  // --- 2. MESSAGES LISTENER ---
   useEffect(() => {
     if (!selectedUser || !loginUser) return;
     const chatId = getChatId(loginUser.uid, selectedUser.uid);
@@ -122,17 +121,25 @@ const Messages = () => {
     return () => unsubscribe();
   }, [selectedUser, loginUser]);
 
-  // Typing Status Listener
+  // --- 3. TYPING STATUS LISTENER (Corrected for your Flat Fields) ---
   useEffect(() => {
-    if (!selectedUser || !loginUser) return;
+    if (!selectedUser || !loginUser) {
+      setIsTyping(false);
+      return;
+    }
     const chatId = getChatId(loginUser.uid, selectedUser.uid);
     
     const unsub = onSnapshot(doc(db, "direct_messages", chatId), (snap) => {
-      const typingData = snap.data()?.typing || {};
-      const someoneTyping = Object.entries(typingData).some(
-        ([uid, val]) => uid !== loginUser.uid && val
-      );
-      setIsTyping(someoneTyping);
+      if (snap.exists()) {
+        const data = snap.data();
+        // Screenshot mein field "typing.UID" hai, hum dusre user ki UID check karenge
+        const fieldName = `typing.${selectedUser.uid}`;
+        const isOtherUserTyping = data[fieldName] === true;
+        
+        setIsTyping(isOtherUserTyping);
+      } else {
+        setIsTyping(false);
+      }
     });
     return () => unsub();
   }, [selectedUser, loginUser]);
@@ -144,20 +151,22 @@ const Messages = () => {
     }
   }, [messages, isTyping]);
 
+  // --- 4. SEND MESSAGE LOGIC ---
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!inputText.trim() || !selectedUser || !loginUser) return;
 
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+
     const chatId = getChatId(loginUser.uid, selectedUser.uid);
     const msgRef = collection(db, "direct_messages", chatId, "messages");
     const chatDocRef = doc(db, "direct_messages", chatId);
-
     const messageToSend = inputText;
+    
     setInputText(""); 
 
     try {
-      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-
+      // Message bhejte hi typing status ko false kar dein
       await setDoc(chatDocRef, {
         participants: [loginUser.uid, selectedUser.uid],
         lastMessage: messageToSend,
@@ -173,6 +182,12 @@ const Messages = () => {
     } catch (err) {
       console.error("Error sending message:", err);
     }
+  };
+
+  const handleCreateMeeting = (selectedUsers) => {
+    const emails = selectedUsers.map(user => user.email);
+    console.log("Creating meeting with:", emails);
+    setIsModalOpen(false);
   };
 
   return (  
@@ -237,7 +252,7 @@ const Messages = () => {
               <button className="text-slate-400 hover:text-slate-600"><FiMoreVertical /></button>
             </div>
 
-            <div ref={containerRef} className="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar p-4 md:p-8 space-y-4 bg-slate-50/20 scroll-smooth">
+            <div ref={containerRef} className="flex-1 overflow-y-auto no-scrollbar p-4 md:p-8 space-y-4 bg-slate-50/20 scroll-smooth">
               {messages.map((m) => (
                 <MessageBubble 
                   key={m.id} 
@@ -246,16 +261,17 @@ const Messages = () => {
                   time={m.timestamp?.toDate ? m.timestamp.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Sending..."} 
                 />
               ))}
-              {isTyping && (
-                <div className="flex justify-start">
-                  <p className="text-indigo-500 text-[10px] font-bold italic animate-bounce px-2">
+          
+            </div>
+
+            <form onSubmit={handleSendMessage} className="p-3 md:p-6 bg-white border-t border-slate-50 w-full">
+            {isTyping && (
+                <div className="flex mb-4 justify-start px-2">
+                  <p className="text-indigo-500 text-[10px] font-black italic animate-pulse">
                     {selectedUser.name} is typing...
                   </p>
                 </div>
               )}
-            </div>
-
-            <form onSubmit={handleSendMessage} className="p-3 md:p-6 bg-white border-t border-slate-50 w-full">
               <div className="flex items-center gap-2 bg-slate-50 p-2 rounded-2xl border border-slate-100 focus-within:border-indigo-200 transition-all">
                 <input 
                   value={inputText}
@@ -299,7 +315,7 @@ const UserItem = ({ name, role, active, onClick }) => (
 const MessageBubble = ({ isMe, text, time }) => (
   <div className={`flex ${isMe ? "justify-end" : "justify-start"} w-full mb-1`}>
     <div className={`group flex flex-col items-${isMe ? "end" : "start"} max-w-[85%] sm:max-w-[70%]`}>
-      <div className={`p-3 md:p-4 rounded-2xl text-sm font-medium shadow-sm break-words whitespace-pre-wrap ${isMe ? "bg-indigo-600 text-white rounded-tr-none" : "bg-white text-slate-800 rounded-tl-none border border-slate-100"}`}>
+      <div className={`p-3 md:p-4 rounded-2xl text-sm font-medium shadow-sm wrap-break-words whitespace-pre-wrap ${isMe ? "bg-indigo-600 text-white rounded-tr-none" : "bg-white text-slate-800 rounded-tl-none border border-slate-100"}`}>
         {text}
       </div>
       <span className="text-[9px] font-bold text-slate-400 mt-1 px-1 uppercase">
