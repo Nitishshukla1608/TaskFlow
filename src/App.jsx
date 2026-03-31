@@ -3,6 +3,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { observeAuthState } from "./Services/authService";
 import { setUser } from "./Context/AuthContext";
+import { Analytics } from "@vercel/analytics/react";
 
 // Components
 import CRA_org from "./Components/Pages/CRA_Org";
@@ -43,48 +44,50 @@ function App() {
   }
 
   return (
-    <Routes>
-      {/* --- PUBLIC ROUTES --- */}
-      <Route
-        path="/login"
-        element={!user ? <Login /> : <Navigate to="/DashboardWrapper" />}
-      />
-
-      {/* Forgot Password Route - Accessible to public */}
-      <Route
-        path="/forgot-password"
-        element={!user ? <ForgotPass /> : <Navigate to="/DashboardWrapper" />}
-      />
-
-      {/* New Organization Route - Accessible to public */}
-      <Route
-        path="/register-org"
-        element={!user ? <CRA_org /> : <Navigate to="/DashboardWrapper" />}
-      />
-      
-      <Route
-        path="/createdmin"
-        element={!user ? <CreateAdmin /> : <Navigate to="/DashboardWrapper" />}
-      />
-
-      {/* --- PROTECTED ROUTES --- */}
-      <Route
-        path="/DashboardWrapper/*"
-        element={user ? <DashboardWrapper /> : <Navigate to="/login" />}
-      />
-
-      {/* --- REDIRECTS --- */}
-      <Route
-        path="/"
-        element={<Navigate to={user ? "/DashboardWrapper" : "/login"} />}
-      />
-      
-      {/* Fallback for 404s */}
-      <Route
-        path="*"
-        element={<Navigate to={user ? "/DashboardWrapper" : "/login"} />}
-      />
-    </Routes>
+    <>
+      <Routes>
+        {/* --- PUBLIC ROUTES --- */}
+        <Route
+          path="/login"
+          element={!user ? <Login /> : <Navigate to="/DashboardWrapper" />}
+        />
+  
+        <Route
+          path="/forgot-password"
+          element={!user ? <ForgotPass /> : <Navigate to="/DashboardWrapper" />}
+        />
+  
+        <Route
+          path="/register-org"
+          element={!user ? <CRA_org /> : <Navigate to="/DashboardWrapper" />}
+        />
+        
+        <Route
+          path="/createdmin"
+          element={!user ? <CreateAdmin /> : <Navigate to="/DashboardWrapper" />}
+        />
+  
+        {/* --- PROTECTED ROUTES --- */}
+        <Route
+          path="/DashboardWrapper/*"
+          element={user ? <DashboardWrapper /> : <Navigate to="/login" />}
+        />
+  
+        {/* --- REDIRECTS --- */}
+        <Route
+          path="/"
+          element={<Navigate to={user ? "/DashboardWrapper" : "/login"} />}
+        />
+        
+        <Route
+          path="*"
+          element={<Navigate to={user ? "/DashboardWrapper" : "/login"} />}
+        />
+      </Routes>
+  
+      {/* ✅ Add Analytics here */}
+      <Analytics />
+    </>
   );
 }
 
