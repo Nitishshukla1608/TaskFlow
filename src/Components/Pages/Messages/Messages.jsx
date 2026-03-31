@@ -56,7 +56,6 @@ const Messages = () => {
   const [inputText, setInputText] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   
-  // Selection States
   const [selectedIds, setSelectedIds] = useState([]);
   const [isSelectionMode, setIsSelectionMode] = useState(false);
 
@@ -67,6 +66,12 @@ const Messages = () => {
 
   const getChatId = (id1, id2) => [id1, id2].sort().join("_");
 
+  // --- Random Border Color Logic (Stabilized with useMemo) ---
+  const borderColor = useMemo(() => {
+    const borderColors = ["border-indigo-500", "border-blue-500", "border-emerald-500", "border-amber-500", "border-red-500", "border-violet-500", "border-pink-500", "border-teal-500", "border-orange-500", "border-lime-500"];
+    return borderColors[Math.floor(Math.random() * borderColors.length)];
+  }, [selectedUser?.uid]); // Only changes when a different user is selected
+
   const filteredMembers = useMemo(() => {
     return members.filter((m) => (m.name || "").toLowerCase().includes(searchTerm.toLowerCase()) && m.uid !== loginUser?.uid);
   }, [members, searchTerm, loginUser]);
@@ -76,13 +81,8 @@ const Messages = () => {
     if (!selectedUser || !loginUser) return;
     const chatId = getChatId(loginUser.uid, selectedUser.uid);
     const q = query(collection(db, "direct_messages", chatId, "messages"), orderBy("timestamp", "asc"));
-
     const unsubscribe = onSnapshot(q, (snap) => {
-      setMessages(snap.docs.map(doc => ({ 
-        id: doc.id, 
-        ...doc.data(),
-        messageId: doc.data().messageId || doc.id // Fallback for old messages
-      })));
+      setMessages(snap.docs.map(doc => ({ id: doc.id, ...doc.data(), messageId: doc.data().messageId || doc.id })));
     });
     return () => unsubscribe();
   }, [selectedUser, loginUser]);
@@ -94,6 +94,11 @@ const Messages = () => {
     });
     return () => unsub();
   }, [selectedUser, loginUser]);
+
+  // Auto-scroll
+  useEffect(() => {
+    if (containerRef.current) containerRef.current.scrollTop = containerRef.current.scrollHeight;
+  }, [messages, isTyping]);
 
   // --- ACTIONS ---
   const handleTyping = async (e) => {
@@ -146,11 +151,11 @@ const Messages = () => {
   };
 
   return (
-    <div className="flex h-[calc(100vh-80px)] w-full bg-white shadow-xl border border-red-400 overflow-hidden relative font-sans">
+    <div className={`flex h-[calc(100vh-80px)] w-full bg-white shadow-xl border-2 ${selectedUser ? borderColor : 'border-slate-100'} overflow-hidden relative font-sans transition-all duration-500`}>
       {isModalOpen && <MeetingModal users={filteredMembers} onClose={() => setIsModalOpen(false)} onCreate={() => {}} />}
 
       {/* Sidebar */}
-      <div className={`${selectedUser ? "hidden" : "flex"} w-full md:w-80 md:flex border-w flex-col bg-slate-50/30`}>
+      <div className={`${selectedUser ? "hidden" : "flex"} w-full md:w-80 md:flex  flex-col bg-slate-50/30`}>
         <div className="p-6">
           <div className="flex justify-between mb-4 items-center">
             <h3 className="text-xl font-black text-slate-800">Messages</h3>
@@ -161,7 +166,7 @@ const Messages = () => {
             <input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search..." className="w-full bg-white rounded-xl py-3 pl-10 text-sm shadow-sm outline-none focus:ring-2 focus:ring-indigo-500/20" />
           </div>
         </div>
-        <div className="flex-1 overflow-y-auto px-4 space-y-2">
+        <div className="flex-1 overflow-y-auto no-scrollbar px-4 space-y-2">
           {filteredMembers.map(m => <UserItem key={m.uid} member={m} active={selectedUser?.uid === m.uid} onClick={() => setSelectedUser(m)} />)}
         </div>
       </div>
@@ -170,8 +175,8 @@ const Messages = () => {
       <div className={`${!selectedUser ? "hidden" : "flex"} flex-1 md:flex flex-col bg-white`}>
         {selectedUser ? (
           <>
-            {/* Dynamic Header */}
-            <div className="p-4 border-w flex items-center justify-between bg-white z-10">
+            {/* Header */}
+            <div className="p-4  flex items-center justify-between bg-white z-10">
               <div className="flex items-center gap-3">
                 {isSelectionMode ? (
                   <button onClick={exitSelection} className="p-2 hover:bg-slate-100 rounded-full"><FiX /></button>
@@ -184,14 +189,19 @@ const Messages = () => {
                 </div>
               </div>
               {isSelectionMode ? (
-                <button onClick={handleBulkDelete} className="bg-red-50 text-red-500 px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 hover:bg-red-100 transition-all"><FiTrash2 /> Delete Selected</button>
+                <button onClick={handleBulkDelete} className="bg-red-50 text-red-500 px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 hover:bg-red-100"><FiTrash2 /> Delete Selected</button>
               ) : (
                 <button className="text-slate-400"><FiMoreVertical /></button>
               )}
             </div>
 
-            {/* Messages Area */}
-            <div ref={containerRef} className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 bg-slate-50/20">
+            {/* Messages Area - NO SCROLLBAR */}
+            <div 
+              ref={containerRef} 
+              className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 bg-slate-50/20 scroll-smooth"
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            >
+              <style>{`.overflow-y-auto::-webkit-scrollbar { display: none; }`}</style>
               {messages.map((m) => (
                 <MessageBubble 
                   key={m.id} 
@@ -207,11 +217,12 @@ const Messages = () => {
                   onDelete={async (id) => await deleteDoc(doc(db, "direct_messages", getChatId(loginUser.uid, selectedUser.uid), "messages", id))}
                 />
               ))}
-              {isTyping && <div className="text-indigo-500 text-[10px] font-black italic animate-pulse">{selectedUser.name} is typing...</div>}
+
             </div>
 
             {/* Input Area */}
-            <form onSubmit={handleSendMessage} className="p-4 bg-white border-w">
+            {!isTyping && <div className="text-indigo-500 ml-6 text-[12px] font-black italic animate-pulse">{selectedUser.name} is typing...</div>}
+            <form onSubmit={handleSendMessage} className="p-4 bg-white ">
               <div className="flex items-center gap-2 bg-slate-50 p-2 rounded-2xl border border-slate-100 focus-within:border-indigo-200">
                 <input value={inputText} onChange={handleTyping} placeholder={editingMessage ? "Editing message..." : "Type a message..."} className="flex-1 bg-transparent px-4 py-2 text-sm outline-none" />
                 <button type="submit" className="bg-indigo-600 text-white p-2.5 rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all"><FiSend size={18} /></button>
@@ -244,16 +255,10 @@ const MessageBubble = ({ msg, isMe, isSelectionMode, isSelected, onSelect, onLon
   const mid = msg.messageId;
   const isMenuOpen = activeMenuId === mid;
 
-  const handleContext = (e) => {
-    e.preventDefault();
-    onLongPress();
-    onSelect(mid);
-  };
-
   return (
     <div 
       onClick={() => isSelectionMode && onSelect(mid)}
-      onContextMenu={handleContext}
+      onContextMenu={(e) => { e.preventDefault(); onLongPress(); onSelect(mid); }}
       className={`flex items-center gap-3 w-full group transition-all duration-200 ${isSelected ? "bg-indigo-50/50 rounded-lg" : ""}`}
     >
       {isSelectionMode && <input type="checkbox" checked={isSelected} readOnly className="w-4 h-4 rounded border-slate-300 text-indigo-600" />}
@@ -261,11 +266,10 @@ const MessageBubble = ({ msg, isMe, isSelectionMode, isSelected, onSelect, onLon
       <div className={`flex-1 flex ${isMe ? "justify-end" : "justify-start"} relative`}>
         <div className={`relative flex flex-col items-${isMe ? "end" : "start"} max-w-[85%] sm:max-w-[70%]`}>
           
-          {/* Menu Dropdown */}
           {isMe && !isSelectionMode && isMenuOpen && (
             <div className="absolute -top-12 right-0 z-20 bg-white border shadow-xl rounded-xl py-1 w-24 animate-in fade-in zoom-in duration-150">
-              <button onClick={() => onEdit()} className="w-full text-left px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50">Edit</button>
-              <button onClick={() => onDelete(mid)} className="w-full text-left px-4 py-2 text-xs font-bold text-red-500 hover:bg-red-50">Delete</button>
+              <button onClick={(e) => { e.stopPropagation(); onEdit(); }} className="w-full text-left px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50">Edit</button>
+              <button onClick={(e) => { e.stopPropagation(); onDelete(mid); }} className="w-full text-left px-4 py-2 text-xs font-bold text-red-500 hover:bg-red-50">Delete</button>
             </div>
           )}
 
@@ -276,9 +280,8 @@ const MessageBubble = ({ msg, isMe, isSelectionMode, isSelected, onSelect, onLon
             {msg.isEdited && <span className="text-[8px] opacity-70 ml-2">(edited)</span>}
           </div>
 
-          {/* Three Dots - Only show for user's own messages when NOT in selection mode */}
           {isMe && !isSelectionMode && (
-            <button onClick={() => setActiveMenuId(isMenuOpen ? null : mid)} className="absolute -left-6 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-slate-600">
+            <button onClick={(e) => { e.stopPropagation(); setActiveMenuId(isMenuOpen ? null : mid); }} className="absolute -left-6 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-slate-600">
               <FiMoreVertical size={14} />
             </button>
           )}

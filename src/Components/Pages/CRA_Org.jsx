@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useDispatch } from "react-redux";
 import { Link, useNavigate } from "react-router-dom";
+import emailjs from "@emailjs/browser";
 
 import { 
   FiBriefcase, FiMail, FiUsers, FiUploadCloud, 
@@ -31,24 +32,43 @@ function CRA_Org() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-
   const handleSubmit = async (e) => {
-    dispatch(setOrganization(formData.name))
-    e.preventDefault();
+    e.preventDefault(); // Sabse pehle preventDefault lagayein
     setLoading(true);
-    setError(""); // Reset error at start of new attempt
-  
+    setError("");
+
     try {
-      // 1. Call your Firebase service
+      // 1. Redux/Context update (formData se data lein)
+      dispatch(setOrganization(formData.name));
+
+      // 2. Firebase service call
       await addOrganization(formData);
       
-      // 2. Success Feedback
+      // 3. EmailJS call (formData. field use karein)
+      try {
+        await emailjs.send(
+          "service_d6r58da",
+          "template_qj3cn0d",
+          {
+            email: formData.orgEmail,
+            company_name: formData.name,
+            Company_email: formData.orgEmail,
+            industry: formData.industry,      // New field
+            team_size: formData.teamSize,     // New field
+            address: formData.location,
+     
+          },
+          "RG-epL79tbuC7qcZI"
+        );
+      } catch (emailErr) {
+        // Agar email fail ho jaye toh registeration stop nahi honi chahiye
+        console.error("EmailJS Error:", emailErr);
+      }
+
       alert("🚀 Organization created successfully!");
-      
-      // 3. Navigation happens ONLY on success
       navigate("/createdmin");
+
     } catch (err) {
-      // 4. Handle errors (e.g., org name already exists)
       console.error("Registration Error:", err);
       setError(err.message || "Failed to create organization. Please try again.");
     } finally {
@@ -95,7 +115,7 @@ function CRA_Org() {
 
           {error && (
   <div className="mb-6 p-4 bg-rose-50 border border-rose-100 text-rose-600 text-xs font-bold rounded-2xl flex items-center gap-2 animate-shake">
-    <FiShield className="flex-shrink-0" />
+    <FiShield className="shrink-0" />
     {error}
   </div>
 )}

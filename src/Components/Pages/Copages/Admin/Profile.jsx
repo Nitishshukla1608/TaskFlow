@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { setUser } from "../../../../Context/AuthContext";
 import { auth } from "../../../../firebase";
 import { signOut as firebaseSignOut } from "firebase/auth";
-import { editPassword, editUser } from "../../../../Services/authService";
+import { editPassword, editUser, checkIfEmailExists } from "../../../../Services/authService"; // Import from your service
 import emailjs from "@emailjs/browser";
 
 import {
@@ -13,7 +12,6 @@ import {
 } from "lucide-react";
 
 function Profile() {
-  const dispatch = useDispatch();
   const user = useSelector((state) => state.auth.user);
   const navigate = useNavigate();
 
@@ -23,7 +21,7 @@ function Profile() {
   const [emailInput, setEmailInput] = useState("");
   const [otp, setOtp] = useState("");
   const [serverOTP, setServerOTP] = useState("");
-  const [timer, setTimer] = useState(120);
+  const [timer, setTimer] = useState(240);
   const [isActive, setIsActive] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [accepted, setAccepted] = useState(false);
@@ -36,7 +34,6 @@ function Profile() {
   const [error, setError] = useState("");
   const [formData, setFormData] = useState({});
 
-  // Sync Form Data with User Redux State
   useEffect(() => {
     if (user) {
       setFormData({
@@ -55,16 +52,13 @@ function Profile() {
     }
   }, [user]);
 
-  // Timer Logic
   useEffect(() => {
     let interval = null;
     if (isActive && timer > 0) {
-      interval = setInterval(() => {
-        setTimer((prev) => prev - 1);
-      }, 1000);
+      interval = setInterval(() => setTimer((prev) => prev - 1), 1000);
     } else if (timer === 0) {
       setIsActive(false);
-      setServerOTP(""); // Expire the OTP on client side
+      setServerOTP(""); 
       clearInterval(interval);
     }
     return () => clearInterval(interval);
@@ -83,7 +77,7 @@ function Profile() {
       setIsEditing(false);
       alert("Profile updated successfully!");
     } catch (err) {
-      setError("Failed to update profile. Please try again.");
+      setError("Failed to update profile.");
     } finally {
       setLoading(false);
     }
@@ -92,16 +86,10 @@ function Profile() {
   const handleLogout = async () => {
     if (window.confirm("Are you sure you want to logout?")) {
       try {
-        // Step 1: Tell Firebase to kill the session
         await firebaseSignOut(auth);
-        
-        // Step 2: (Optional but recommended) Clear local storage 
-        // if you store anything there manually
         localStorage.clear();
         sessionStorage.clear();
-
-        // NOTE: You don't NEED dispatch(setUser(null)) or navigate here
-        // because your App.js useEffect will catch the change and do it for you!
+        navigate("/login");
       } catch (err) {
         console.error("Logout failed", err);
       }
@@ -114,20 +102,10 @@ function Profile() {
     setOtpError("");
     if (!accepted) return setOtpError("Please accept terms & conditions");
     if (!emailInput) return setOtpError("Email required");
-    if (emailInput !== user.email) return setOtpError("Enter your registered email address");
-
-    try {
-      const res = await checkIfEmailExists(emailInput);
     
-      if (!res.exists) {
-        setError("Email not registered");
-      } else {
-        setError(""); // clear error
-        console.log("User exists", res.methods);
-      }
-    
-    } catch (error) {
-      setError(error.message); // ✅ show readable message
+    // Safety Check: User logged in email must match
+    if (emailInput.toLowerCase() !== user.email.toLowerCase()) {
+      return setOtpError("Please enter your registered email address.");
     }
 
     setOtpLoading(true);
@@ -143,56 +121,38 @@ function Profile() {
       );
 
       setStep(2);
-      setTimer(120); // 2 Minute timer
+      setTimer(240);
       setIsActive(true);
-      setOtp(""); // Clear previous OTP input if any
+      setOtp("");
     } catch (err) {
-      setOtpError("Failed to send OTP. Check your connection.");
+      setOtpError("Failed to send OTP. Try again later.");
     } finally {
       setOtpLoading(false);
     }
   };
 
-  const formatDate = (dateValue) => {
-    if (!dateValue) return "N/A";
-  
-    // Case 1: Firestore Timestamp object
-    if (dateValue.toDate) {
-      return dateValue.toDate().toLocaleString();
-    }
-  
-    // Case 2: Object with seconds (sometimes happens after Redux serialization)
-    if (dateValue.seconds) {
-      return new Date(dateValue.seconds * 1000).toLocaleString();
-    }
-  
-    // Case 3: It's already a string or standard Date
-    return new Date(dateValue).toLocaleDateString();
-  };
-
   const verifyOTP = () => {
-    if (timer === 0) return setOtpError("OTP expired. Please resend.");
-    if (otp !== serverOTP) return setOtpError("Invalid OTP");
-    
+    if (timer === 0) return setOtpError("OTP expired.");
+    if (otp !== serverOTP || !serverOTP) return setOtpError("Invalid OTP");
     setOtpError("");
     setStep(3);
   };
 
   const handlePasswordChange = async () => {
     const passwordRegex = /^(?=.*[A-Z])(?=.*[!@#$%^&*])[A-Za-z\d!@#$%^&*]{8,12}$/;
-
     if (!passwordRegex.test(newPassword)) {
-      return setOtpError(
-        "Password must be 8-12 characters, include 1 uppercase and 1 special character."
-      );
+      return setOtpError("Password must be 8-12 chars, 1 uppercase & 1 special char.");
     }
 
     try {
+      setOtpLoading(true);
       await editPassword(user.uid, newPassword);
       alert("Password updated successfully ✅");
       closeModal();
     } catch (err) {
-      setOtpError("Update failed. You may need to re-login to change password.");
+      setOtpError("Update failed. You may need to re-login first.");
+    } finally {
+      setOtpLoading(false);
     }
   };
 
@@ -205,10 +165,17 @@ function Profile() {
     setOtpError("");
     setAccepted(false);
     setIsActive(false);
-    setTimer(120);
+    setTimer(240);
   };
 
-  if (!user) return <div className="p-8 text-center font-bold">Loading user profile...</div>;
+  const formatDate = (dateValue) => {
+    if (!dateValue) return "N/A";
+    if (dateValue.toDate) return dateValue.toDate().toLocaleDateString();
+    if (dateValue.seconds) return new Date(dateValue.seconds * 1000).toLocaleDateString();
+    return new Date(dateValue).toLocaleDateString();
+  };
+
+  if (!user) return <div className="p-8 text-center font-bold">Loading...</div>;
 
   return (
     <div className="p-4 md:p-8 bg-[#f8fafc] min-h-screen">
@@ -218,53 +185,35 @@ function Profile() {
           <div className="h-40 bg-gradient-to-r from-indigo-600 to-violet-600 w-full relative">
             <div className="absolute -bottom-12 left-10 flex items-end gap-6">
               <div className="w-32 h-32 bg-white rounded-[2.5rem] p-2 shadow-2xl shrink-0">
-                <div className="w-full h-full bg-slate-100 rounded-[2rem] flex items-center justify-center text-4xl font-black text-indigo-600">
+                <div className="w-full h-full bg-slate-100 rounded-[2rem] flex items-center justify-center text-4xl font-black text-indigo-600 uppercase">
                   {user.name?.charAt(0)}
                 </div>
               </div>
               <div className="pb-12 hidden sm:block">
                 <h2 className="text-3xl font-black text-white drop-shadow-md">{user.name}</h2>
-                <p className="text-indigo-100 font-bold opacity-90">
-                  {user.organization} • {user.position}
-                </p>
+                <p className="text-indigo-100 font-bold opacity-90">{user.organization} • {user.position}</p>
               </div>
             </div>
 
             <div className="absolute bottom-6 right-6 md:right-10 flex items-center gap-3 z-20">
               {!isEditing && (
-                <button
-                  onClick={handleLogout}
-                  className="flex items-center gap-2 px-5 py-2.5 bg-white/20 backdrop-blur-md text-white border border-white/30 rounded-2xl font-bold hover:bg-rose-400 hover:border-rose-500 transition-all active:scale-95 shadow-lg"
-                >
+                <button onClick={handleLogout} className="flex items-center gap-2 px-5 py-2.5 bg-white/20 backdrop-blur-md text-white border border-white/30 rounded-2xl font-bold hover:bg-rose-500 transition-all">
                   <LogOut size={18} /> Logout
                 </button>
               )}
-              <button
-                onClick={() => setIsEditing(!isEditing)}
-                className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-bold transition-all shadow-lg active:scale-95 ${
-                  isEditing ? "bg-rose-400 text-white" : "bg-white text-slate-800"
-                }`}
-              >
+              <button onClick={() => setIsEditing(!isEditing)} className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-bold transition-all shadow-lg ${isEditing ? "bg-rose-400 text-white" : "bg-white text-slate-800"}`}>
                 {isEditing ? <><X size={18} /> Cancel</> : <><Edit3 size={18} /> Edit Profile</>}
               </button>
             </div>
           </div>
 
           <div className="pt-20 px-10 pb-10">
-            {error && (
-              <div className="mb-6 p-4 bg-rose-50 text-rose-600 rounded-2xl border border-rose-100 font-bold text-sm">
-                {error}
-              </div>
-            )}
+            {error && <div className="mb-6 p-4 bg-rose-50 text-rose-600 rounded-2xl border border-rose-100 font-bold text-sm">{error}</div>}
 
             {isEditing && (
               <div className="mb-8 p-4 bg-indigo-50 border border-indigo-100 rounded-2xl flex items-center justify-between">
-                <p className="text-indigo-600 text-sm font-bold">You are currently in editing mode.</p>
-                <button
-                  onClick={handleSave}
-                  disabled={loading}
-                  className="flex items-center gap-2 px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold shadow-md hover:bg-indigo-700 disabled:opacity-50 transition-all"
-                >
+                <p className="text-indigo-600 text-sm font-bold">Editing Mode Active</p>
+                <button onClick={handleSave} disabled={loading} className="flex items-center gap-2 px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold shadow-md hover:bg-indigo-700 disabled:opacity-50">
                   {loading ? "Saving..." : <><Save size={18} /> Save Changes</>}
                 </button>
               </div>
@@ -280,14 +229,9 @@ function Profile() {
               <SectionHeader title="Contact Details" />
               <InfoBox isEditing={isEditing} icon={<Mail />} label="Email Address" name="email" value={formData.email} onChange={handleChange} />
               <InfoBox isEditing={isEditing} icon={<Phone />} label="Phone Number" name="phone" value={formData.phone} onChange={handleChange} />
-              {/* Note: Ensure user.createdAt is handled correctly if it's a Firestore Timestamp */}
-              <InfoBox 
-  icon={<Calendar />} 
-  label="Joined Date" 
-  value={formatDate(user.createdAt)} 
-/>
+              <InfoBox icon={<Calendar />} label="Joined Date" value={formatDate(user.createdAt)} />
 
-              <SectionHeader title="Location Information" />
+              <SectionHeader title="Location Info" />
               <InfoBox isEditing={isEditing} icon={<Map />} label="City" name="city" value={formData.city} onChange={handleChange} />
               <InfoBox isEditing={isEditing} icon={<Globe />} label="State" name="state" value={formData.state} onChange={handleChange} />
               <InfoBox isEditing={isEditing} icon={<Hash />} label="Pin Code" name="pinCode" value={formData.pinCode} onChange={handleChange} />
@@ -300,16 +244,14 @@ function Profile() {
         </div>
       </div>
 
-      {/* Reset Password Modal */}
+      {/* Password Reset Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white p-8 rounded-3xl w-full max-w-md shadow-2xl relative">
-            <h2 className="font-bold text-2xl mb-2 text-center">Reset Your Password</h2>
-            <p className="text-sm text-gray-500 text-center mb-6">
-              Verification for <span className="font-semibold text-indigo-600">{user.email}</span>
-            </p>
+          <div className="bg-white p-8 rounded-3xl w-full max-w-md shadow-2xl">
+            <h2 className="font-bold text-2xl mb-2 text-center text-slate-900">Reset Password</h2>
+            <p className="text-sm text-gray-500 text-center mb-6">Verification for <span className="font-bold text-indigo-600">{user.email}</span></p>
 
-            {otpError && <p className="text-rose-500 text-sm mb-4 text-center font-medium">{otpError}</p>}
+            {otpError && <p className="text-rose-500 text-xs mb-4 text-center font-bold bg-rose-50 p-2 rounded-lg">{otpError}</p>}
 
             <div className="flex justify-between mb-8 text-[10px] font-black uppercase tracking-widest text-gray-400">
               <span className={step >= 1 ? "text-indigo-600" : ""}>1. Verify</span>
@@ -318,90 +260,39 @@ function Profile() {
             </div>
 
             {step === 1 && (
-              <>
-                <input
-                  type="email"
-                  placeholder="Confirm registered email"
-                  value={emailInput}
-                  onChange={(e) => setEmailInput(e.target.value)}
-                  className="w-full border border-gray-200 p-3 rounded-xl mb-4 focus:ring-2 focus:ring-indigo-500 outline-none font-medium"
-                />
-                <div className="flex items-start gap-3 mb-6">
-                  <input
-                    type="checkbox"
-                    id="terms"
-                    className="mt-1 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
-                    checked={accepted}
-                    onChange={(e) => setAccepted(e.target.checked)}
-                  />
-                  <label htmlFor="terms" className="text-xs text-gray-500 leading-relaxed cursor-pointer">
-                    I understand a secure OTP will be sent to my email. I will not share this code with anyone.
-                  </label>
+              <div className="space-y-4">
+                <input type="email" placeholder="Confirm registered email" value={emailInput} onChange={(e) => setEmailInput(e.target.value)} className="w-full border border-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium" />
+                <div className="flex items-start gap-3">
+                  <input type="checkbox" id="terms" className="mt-1" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} />
+                  <label htmlFor="terms" className="text-[11px] text-gray-500 font-medium">I will not share this OTP with anyone.</label>
                 </div>
-                <button
-                  onClick={sendOTP}
-                  disabled={otpLoading}
-                  className="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700 transition disabled:opacity-50"
-                >
+                <button onClick={sendOTP} disabled={otpLoading} className="w-full bg-slate-900 text-white py-3 rounded-xl font-bold hover:bg-indigo-600 transition-all disabled:opacity-50">
                   {otpLoading ? "Sending..." : "Send OTP"}
                 </button>
-              </>
+              </div>
             )}
 
             {step === 2 && (
-              <>
-                <input
-                  type="text"
-                  maxLength={6}
-                  placeholder="000000"
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value)}
-                  className="w-full border border-gray-200 p-4 rounded-xl mb-4 text-center text-2xl tracking-[0.5em] font-black focus:ring-2 focus:ring-indigo-500 outline-none"
-                />
-                <button
-                  onClick={verifyOTP}
-                  className="w-full bg-gradient-to-r from-indigo-600 to-violet-600 text-white py-3 rounded-xl font-bold hover:from-indigo-700 hover:to-violet-700 transition mb-3"
-                >
-                  Verify Code
-                </button>
-                <div className="flex items-center justify-between px-1">
-                  <p className="text-sm text-gray-500">
-                    {isActive ? `Resend in ${timer}s` : "Didn't receive OTP?"}
-                  </p>
-                  <button
-                    disabled={isActive}
-                    onClick={sendOTP}
-                    className={`text-sm font-semibold transition ${
-                      isActive ? "text-gray-300 cursor-not-allowed" : "text-blue-500 hover:text-blue-600 underline"
-                    }`}
-                  >
-                    Resend OTP
-                  </button>
+              <div className="space-y-4">
+                <input type="text" maxLength={6} placeholder="000000" value={otp} onChange={(e) => setOtp(e.target.value)} className="w-full border border-gray-200 p-4 rounded-xl text-center text-2xl tracking-[0.5em] font-black focus:ring-2 focus:ring-indigo-500 outline-none" />
+                <button onClick={verifyOTP} className="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700 transition-all">Verify Code</button>
+                <div className="flex justify-between px-1">
+                  <p className="text-[11px] text-gray-400 font-bold uppercase">{isActive ? `Resend in ${timer}s` : "Expired"}</p>
+                  <button disabled={isActive} onClick={sendOTP} className={`text-[11px] font-black uppercase underline ${isActive ? "text-gray-300" : "text-indigo-600"}`}>Resend OTP</button>
                 </div>
-              </>
+              </div>
             )}
 
             {step === 3 && (
-              <>
-                <input
-                  type="password"
-                  placeholder="New secure password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full border border-gray-200 p-3 rounded-xl mb-4 focus:ring-2 focus:ring-indigo-500 outline-none font-medium"
-                />
-                <button
-                  onClick={handlePasswordChange}
-                  className="w-full bg-emerald-600 text-white py-3 rounded-xl font-bold hover:bg-emerald-700 transition"
-                >
-                  Update Password
+              <div className="space-y-4">
+                <input type="password" placeholder="New secure password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="w-full border border-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium" />
+                <button onClick={handlePasswordChange} disabled={otpLoading} className="w-full bg-emerald-600 text-white py-3 rounded-xl font-bold hover:bg-emerald-700 transition-all">
+                  {otpLoading ? "Updating..." : "Update Password"}
                 </button>
-              </>
+              </div>
             )}
 
-            <button onClick={closeModal} className="mt-6 text-sm text-gray-400 w-full hover:text-gray-600 font-bold transition">
-              Cancel and Close
-            </button>
+            <button onClick={closeModal} className="mt-6 text-[11px] text-gray-400 w-full font-black uppercase tracking-widest hover:text-rose-500 transition">Cancel and Close</button>
           </div>
         </div>
       )}
@@ -409,13 +300,11 @@ function Profile() {
   );
 }
 
-// Sub-components remain mostly the same but with minor layout cleanup
+// Sub-components
 function SectionHeader({ title }) {
   return (
     <div className="lg:col-span-3 mt-4">
-      <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 border-b border-slate-50 pb-2">
-        {title}
-      </h3>
+      <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 border-b border-slate-50 pb-2">{title}</h3>
     </div>
   );
 }
@@ -423,40 +312,21 @@ function SectionHeader({ title }) {
 function InfoBox({ icon, label, value, isEditing, name, onChange, openModal }) {
   const isPassword = label === "Password";
   return (
-    <div className="flex flex-col gap-2 p-5 bg-slate-50 rounded-[2rem] border border-slate-100">
+    <div className="flex flex-col gap-2 p-5 bg-slate-50 rounded-[2rem] border border-slate-100 transition-all hover:bg-white hover:shadow-sm">
       <div className="flex items-center gap-3">
-        <div className="p-2.5 bg-white text-indigo-600 rounded-xl shadow-sm">
-          {icon}
-        </div>
-        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-          {label}
-        </p>
+        <div className="p-2.5 bg-white text-indigo-600 rounded-xl shadow-sm">{icon}</div>
+        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{label}</p>
       </div>
       <div className="mt-1">
         {isPassword ? (
           <div className="flex items-center justify-between">
-            <p className="text-sm font-bold text-slate-700">••••••••</p>
-            {!isEditing && (
-              <button 
-                onClick={openModal} 
-                className="p-1.5 hover:bg-indigo-50 text-indigo-600 rounded-lg transition-colors"
-              >
-                <Edit3 size={14} />
-              </button>
-            )}
+            <p className="text-sm font-bold text-slate-700 tracking-widest">••••••••</p>
+            {!isEditing && <button onClick={openModal} className="p-1.5 hover:bg-indigo-50 text-indigo-600 rounded-lg"><Edit3 size={14} /></button>}
           </div>
         ) : isEditing && onChange ? (
-          <input
-            name={name}
-            type="text"
-            value={value || ""}
-            onChange={onChange}
-            className="w-full bg-white border border-slate-200 rounded-xl px-4 py-1.5 text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
-          />
+          <input name={name} type="text" value={value || ""} onChange={onChange} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-1.5 text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none" />
         ) : (
-          <p className="text-sm font-bold text-slate-700 truncate">
-            {value || "---"}
-          </p>
+          <p className="text-sm font-bold text-slate-700 truncate">{value || "---"}</p>
         )}
       </div>
     </div>

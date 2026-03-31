@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import emailjs from "@emailjs/browser"; // Step 1: Install this via npm
+import emailjs from "@emailjs/browser";
 import { ChevronLeft, ShieldCheck } from "lucide-react";
-import {checkIfEmailExists} from "../../Services/authService"
-// Import your password update service here
-// import { updatePasswordInDB } from "../../Services/authService"; 
+import { checkIfEmailExists, editPassword } from "../../Services/authService"; // Ensure editPassword is imported
 
 function ForgotPass() {
   const navigate = useNavigate();
@@ -12,7 +10,7 @@ function ForgotPass() {
   const [emailInput, setEmailInput] = useState("");
   const [otp, setOtp] = useState("");
   const [serverOTP, setServerOTP] = useState("");
-  const [timer, setTimer] = useState(120);
+  const [timer, setTimer] = useState(240);
   const [isActive, setIsActive] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [accepted, setAccepted] = useState(false);
@@ -28,7 +26,7 @@ function ForgotPass() {
       }, 1000);
     } else if (timer === 0) {
       setIsActive(false);
-      setServerOTP(""); // Expire the OTP
+      setServerOTP(""); // Expire the OTP logic
       clearInterval(interval);
     }
     return () => clearInterval(interval);
@@ -38,32 +36,27 @@ function ForgotPass() {
 
   const sendOTP = async () => {
     setOtpError("");
-  
+    
     if (!emailInput) return setOtpError("Email required");
-  
     if (!emailInput.toLowerCase().endsWith("@gmail.com")) {
       return setOtpError("Please use a valid @gmail.com address");
     }
-  
     if (!accepted) return setOtpError("Please accept terms & conditions");
-  
+
     setOtpLoading(true);
-  
+
     try {
-      // 🔹 STEP 1: Check email exists in Firebase Auth
+      // 🔹 Check email exists
       const res = await checkIfEmailExists(emailInput);
-  
       if (!res.exists) {
-        setOtpError("Email is not registered");
-        setOtpLoading(false);
-        return; // 🛑 STOP here
+        setOtpError("Email is not registered in our system");
+        return;
       }
-  
-      // 🔹 STEP 2: Generate OTP
+
+      // 🔹 Generate & Send OTP
       const otpValue = generateOTP();
       setServerOTP(otpValue);
-  
-      // 🔹 STEP 3: Send email via EmailJS
+
       await emailjs.send(
         "service_65pyqaw",
         "template_lykbw2q",
@@ -73,46 +66,49 @@ function ForgotPass() {
         },
         "uZNzBSBvD3wP6-gBT"
       );
-  
-      // 🔹 STEP 4: Move to OTP step
+
       setStep(2);
-      setTimer(120);
+      setTimer(240);
       setIsActive(true);
       setOtp("");
-  
+
     } catch (err) {
       console.error(err);
-      setOtpError(err.message || "Something went wrong");
+      setOtpError("Failed to send OTP. Try again later.");
     } finally {
       setOtpLoading(false);
     }
   };
 
   const verifyOTP = () => {
+    setOtpError(""); // Reset error first
     if (timer === 0) return setOtpError("OTP expired. Please resend.");
-    if (otp !== serverOTP) return setOtpError("Invalid OTP code");
+    if (otp !== serverOTP || !serverOTP) return setOtpError("Invalid OTP code");
     
-    setOtpError("");
     setStep(3);
   };
 
   const handlePasswordChange = async () => {
-    // Regex: 8-12 chars, 1 uppercase, 1 special char
+    setOtpError("");
     const passwordRegex = /^(?=.*[A-Z])(?=.*[!@#$%^&*])[A-Za-z\d!@#$%^&*]{8,12}$/;
 
     if (!passwordRegex.test(newPassword)) {
       return setOtpError(
-        "Password must be 8-12 characters, include 1 uppercase and 1 special character."
+        "Password must be 8-12 chars, include 1 uppercase and 1 special char."
       );
     }
 
     try {
-        await editPassword(newPassword);
+      setOtpLoading(true);
+      // Pass both email and new password to identify which user to update
+      await editPassword(emailInput, newPassword); 
       
       alert("Password updated successfully ✅");
-      navigate("/login"); // Redirect to login
+      navigate("/login");
     } catch (err) {
-      setOtpError("Update failed. Please try again later.");
+      setOtpError(err.message || "Update failed. Please try again.");
+    } finally {
+      setOtpLoading(false);
     }
   };
 
@@ -120,7 +116,6 @@ function ForgotPass() {
     <div className="min-h-screen bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-indigo-100 via-slate-50 to-white flex items-center justify-center p-6 font-sans">
       <div className="bg-white/80 backdrop-blur-xl p-8 rounded-[2.5rem] w-full max-w-md shadow-[0_30px_60px_rgba(0,0,0,0.12)] border border-white relative">
         
-        {/* Back Button */}
         <Link to="/login" className="absolute top-8 left-8 text-gray-400 hover:text-indigo-600 transition-colors">
           <ChevronLeft className="w-6 h-6" />
         </Link>
@@ -136,12 +131,11 @@ function ForgotPass() {
         </div>
 
         {otpError && (
-          <div className="bg-rose-50 text-rose-500 text-xs py-2 px-4 rounded-lg mb-4 text-center font-semibold border border-rose-100 animate-shake">
+          <div className="bg-rose-50 text-rose-500 text-[11px] py-2 px-4 rounded-lg mb-4 text-center font-bold border border-rose-100 animate-shake">
             {otpError}
           </div>
         )}
 
-        {/* Progress Bar */}
         <div className="flex justify-between mb-8 px-4 text-[10px] font-black uppercase tracking-widest text-gray-400">
           <span className={step >= 1 ? "text-indigo-600" : ""}>1. Email</span>
           <span className={step >= 2 ? "text-indigo-600" : ""}>2. OTP</span>
@@ -226,9 +220,10 @@ function ForgotPass() {
             </div>
             <button
               onClick={handlePasswordChange}
-              className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-emerald-700 transition-all shadow-xl active:scale-95"
+              disabled={otpLoading}
+              className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-emerald-700 transition-all shadow-xl active:scale-95 disabled:opacity-50"
             >
-              Set New Password
+              {otpLoading ? "Updating..." : "Set New Password"}
             </button>
           </div>
         )}
