@@ -1,44 +1,82 @@
 import React, { useEffect, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import { observeAuthState } from "./Services/authService";
 import { setUser } from "./Context/AuthContext";
 import { Analytics } from "@vercel/analytics/react";
+
+// Firebase imports
+import { db } from "./firebase"; 
+import { collection, query, where, onSnapshot } from "firebase/firestore";
 
 // Components
 import CRA_org from "./Components/Pages/CRA_Org";
 import { CreateAdmin } from "./Components/Pages/CreateAdmin";
 import Login from "./Components/Pages/Login";
 import DashboardWrapper from "./Components/Dashboard/DashboardWrapper";
-import ForgotPass from "../src/Components/Pages/ForgotPass"; // Ensure this import path is correct
+import ForgotPass from "../src/Components/Pages/ForgotPass"; 
+import VideoCallPage from "./Components/VideoCall/VideocallPage";
 
 function App() {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const user = useSelector((state) => state.auth.user);
   const [isInitializing, setIsInitializing] = useState(true);
 
+  // --- 1. AUTH STATE OBSERVER ---
   useEffect(() => {
     const unsubscribe = observeAuthState((userData) => {
       if (userData) {
-        // Hydrate Redux state if Firebase session exists
         dispatch(setUser(userData));
       } else {
-        // Clear Redux state if no session exists
         dispatch(setUser(null));
       }
       setIsInitializing(false);
     });
-
     return () => unsubscribe();
   }, [dispatch]);
 
-  
+  // --- 2. REAL-TIME CALL LISTENER ---
+  useEffect(() => {
+    if (!user) return;
+
+    // Sirf wahi calls suno jo 'active' hain
+    const q = query(
+      collection(db, "activeCalls"), 
+      where("status", "==", "active")
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      snapshot.docChanges().forEach((change) => {
+        // Sirf tabhi alert dikhao jab naya document 'active' status ke saath add ho
+        if (change.type === "added") {
+          const callData = change.doc.data();
+          
+          // Check: User invited hai aur call abhi active hai
+          if (callData.participants.includes(user.uid) && callData.status === "active") {
+            
+            // Notification logic
+            const join = window.confirm(`${callData.hostName} is inviting you to a video call. Join?`);
+            if (join) {
+              navigate(`/video-call/${callData.channelId}`);
+            }
+          }
+        }
+        
+        // Optional: Agar call 'modified' hokar status 'inactive' ho jaye, 
+        // toh aap yahan logic likh sakte hain alert ko auto-close karne ka (agar custom modal ho).
+      });
+    });
+
+    return () => unsubscribe();
+  }, [user, navigate]);
+
   // Loading Screen
   if (isInitializing) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-indigo-600"></div>
-        <p className="ml-3 font-bold text-slate-500">Syncing Workspace...</p>
+        <p className="ml-3 font-bold text-slate-500 italic uppercase tracking-widest text-[10px]">Syncing Workspace...</p>
       </div>
     );
   }
@@ -46,46 +84,39 @@ function App() {
   return (
     <>
       <Routes>
-        {/* --- PUBLIC ROUTES --- */}
         <Route
           path="/login"
           element={!user ? <Login /> : <Navigate to="/DashboardWrapper" />}
         />
-  
         <Route
           path="/forgot-password"
           element={!user ? <ForgotPass /> : <Navigate to="/DashboardWrapper" />}
         />
-  
         <Route
           path="/register-org"
           element={!user ? <CRA_org /> : <Navigate to="/DashboardWrapper" />}
         />
-        
         <Route
           path="/createdmin"
           element={!user ? <CreateAdmin /> : <Navigate to="/DashboardWrapper" />}
         />
-  
-        {/* --- PROTECTED ROUTES --- */}
         <Route
           path="/DashboardWrapper/*"
           element={user ? <DashboardWrapper /> : <Navigate to="/login" />}
         />
-  
-        {/* --- REDIRECTS --- */}
+        <Route
+          path="/video-call/:channelId"
+          element={user ? <VideoCallPage /> : <Navigate to="/login" />}
+        />
         <Route
           path="/"
           element={<Navigate to={user ? "/DashboardWrapper" : "/login"} />}
         />
-        
         <Route
           path="*"
           element={<Navigate to={user ? "/DashboardWrapper" : "/login"} />}
         />
       </Routes>
-  
-      {/* ✅ Add Analytics here */}
       <Analytics />
     </>
   );

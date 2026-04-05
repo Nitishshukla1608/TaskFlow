@@ -4,6 +4,7 @@ import { initializeApp } from "firebase/app";
 // Import Firebase services you need
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
+import { getFunctions } from "firebase/functions";
 
 
 // Your Firebase configuration
@@ -26,6 +27,7 @@ const secondaryApp = initializeApp(firebaseConfig, "Secondary");
 export const auth = getAuth(app);
 export const secondaryAuth = getAuth(secondaryApp);
 export const db = getFirestore(app);
+export const functions = getFunctions(app);
 
 
 // Optional (not required)
