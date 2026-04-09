@@ -1,105 +1,132 @@
 import React from 'react';
 import { useSelector } from 'react-redux';
-import { FiCheckCircle, FiZap, FiShield, FiArrowRight, FiInfo } from "react-icons/fi";
-// FIX 1: Correct import source
 import { Link } from "react-router-dom";
+import { 
+  FiCheck, FiShield, FiArrowRight, 
+  FiAlertCircle, FiCreditCard, FiLock 
+} from "react-icons/fi";
 
-function PaidPlan({ onActivate }) {
+const INCLUDED_FEATURES = [
+  "Unlimited Project Workspaces",
+  "Advanced Role-Based Permissions",
+  "Team Performance Analytics",
+  "24/7 Priority Engineer Support",
+  "White-label Organization Branding",
+  "Enterprise-grade Security (SOC2)"
+];
+
+export default function PlanConfirmation({ onActivate }) {
   const planData = useSelector((state) => state.plan?.currentPlanData);
   const isFreeTrial = useSelector((state) => state.plan?.isFreeTrial);
 
+  // Robust Error State
   if (!planData || !planData.price) {
     return (
-      <div className="p-12 text-center bg-white rounded-[2.5rem] border border-dashed border-slate-200">
-        <FiInfo className="mx-auto text-slate-300 mb-4" size={40} />
-        <h3 className="text-lg font-bold text-slate-800">No plan selected</h3>
-        <p className="text-slate-500 text-sm">Please go back and select a workspace plan.</p>
+      <div className="max-w-md mx-auto my-20 p-12 text-center bg-white border border-slate-200 rounded-lg shadow-sm">
+        <FiAlertCircle className="mx-auto text-slate-300 mb-4" size={32} />
+        <h3 className="text-base font-bold text-slate-900">Session Timeout</h3>
+        <p className="text-slate-500 text-sm mt-2 mb-6">Your plan selection could not be retrieved. Please restart the checkout process.</p>
+        <Link to="/pricing" className="text-sm font-bold text-indigo-600 hover:text-indigo-700 underline">Return to Pricing</Link>
       </div>
     );
   }
 
   return (
-    <div className="max-w-2xl mx-auto my-10">
-      <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-2xl shadow-indigo-100/50 overflow-hidden">
+    <div className="min-h-screen bg-slate-50/50 py-16 px-4">
+      <div className="max-w-4xl mx-auto">
         
-        {/* Header Section */}
-        <div className="bg-indigo-600 p-8 text-white relative">
-          <div className="absolute top-0 right-0 p-6 opacity-10">
-            <FiZap size={120} />
-          </div>
-          <div className="relative z-10">
-            <span className="px-3 py-1 bg-white/20 rounded-full text-[10px] font-black uppercase tracking-widest">
-              {isFreeTrial ? "Trial Activation" : "Premium Member"}
-            </span>
-            <h2 className="text-3xl font-black mt-2">
-              {isFreeTrial ? "30 Days Free" : `${planData.period} Pro`}
-            </h2>
-            <p className="opacity-80 text-sm font-medium mt-1">
-              Unlocking full access to TaskFlow's advanced features.
-            </p>
-          </div>
+        {/* Progress Tracker (Simplified) */}
+        <div className="flex items-center justify-center gap-4 mb-10">
+          <div className="h-1 w-12 bg-indigo-600 rounded-full" />
+          <div className="h-1 w-12 bg-indigo-600 rounded-full" />
+          <div className="h-1 w-12 bg-slate-200 rounded-full" />
         </div>
 
-        {/* Features List */}
-        <div className="p-10">
-          <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-6">
-            Included in your plan
-          </h4>
+        <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden grid grid-cols-1 lg:grid-cols-5">
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-10">
-            <PlanFeature text="Unlimited Projects" />
-            <PlanFeature text="Role-based Security" />
-            <PlanFeature text="Team Analytics" />
-            <PlanFeature text="Priority Support" />
-            <PlanFeature text="Custom Branding" />
-            <PlanFeature text="Unlimited Storage" />
-          </div>
+          {/* Left: Value Stack (3/5 Columns) */}
+          <div className="lg:col-span-3 p-8 lg:p-12 border-b lg:border-b-0 lg:border-r border-slate-100">
+            <h2 className="text-xs font-bold text-indigo-600 uppercase tracking-widest mb-2">Order Summary</h2>
+            <h1 className="text-2xl font-bold text-slate-900 mb-8">
+              {isFreeTrial ? "Verify Your Trial Activation" : "Finalize Your Subscription"}
+            </h1>
 
-          {/* Pricing Summary */}
-          <div className="bg-slate-50 rounded-3xl p-6 border border-slate-100 mb-8">
-            <div className="flex justify-between items-center">
-              <div>
-                <p className="text-xs font-bold text-slate-500 uppercase">Billing Cycle</p>
-                <p className="font-black text-slate-800 uppercase tracking-tight">
-                    {planData.period}
-                </p>
+            <div className="space-y-4">
+              <p className="text-sm font-semibold text-slate-700 mb-4">Included in {planData.title || 'Pro'} Plan:</p>
+              <div className="grid grid-cols-1 gap-3">
+                {INCLUDED_FEATURES.map((feature, i) => (
+                  <div key={i} className="flex items-center gap-3 text-slate-600">
+                    <div className="flex-shrink-0 w-5 h-5 bg-emerald-50 rounded-full flex items-center justify-center">
+                      <FiCheck className="text-emerald-600" size={12} />
+                    </div>
+                    <span className="text-sm font-medium">{feature}</span>
+                  </div>
+                ))}
               </div>
-              <div className="text-right">
-                <p className="text-xs font-bold text-slate-500 uppercase">Total to Pay</p>
-                <p className="text-2xl font-black text-indigo-600">
-                    ${isFreeTrial ? "0.00" : planData.price}
+            </div>
+
+            <div className="mt-12 p-6 bg-slate-50 rounded-lg border border-slate-100 flex gap-4">
+              <FiShield className="text-slate-400 mt-1" size={20} />
+              <div>
+                <h4 className="text-sm font-bold text-slate-900">Enterprise Security Pledge</h4>
+                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                  Your workspace is protected by 256-bit AES encryption. Access can be revoked by the administrator at any time.
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Action Button - FIX 2: Using Link as the container for better HTML structure */}
-          <Link 
-            to="payment"
-            onClick={onActivate} // Runs activation logic before navigating
-            className="group w-full py-5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black text-sm shadow-xl shadow-indigo-200 transition-all flex items-center justify-center gap-3"
-          >
-            {isFreeTrial ? "Activate Free Trial" : "Confirm & Pay Now"}
-            <FiArrowRight className="group-hover:translate-x-1 transition-transform" />
-          </Link>
+          {/* Right: Checkout Sidebar (2/5 Columns) */}
+          <div className="lg:col-span-2 p-8 lg:p-12 bg-slate-50/30 flex flex-col justify-between">
+            <div>
+              <div className="flex justify-between items-center mb-6">
+                <span className="text-sm font-medium text-slate-500">Plan Type</span>
+                <span className="text-sm font-bold text-slate-900 uppercase tracking-tighter">{planData.period}</span>
+              </div>
+              
+              <div className="space-y-3 pt-6 border-t border-slate-200">
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-500">Subtotal</span>
+                  <span className="text-slate-900 font-medium">${planData.price}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-500">Discount Applied</span>
+                  <span className="text-emerald-600 font-medium">{isFreeTrial ? "-$"+planData.price : "$0.00"}</span>
+                </div>
+                <div className="flex justify-between items-center pt-4 border-t border-slate-200">
+                  <span className="text-base font-bold text-slate-900">Total Due</span>
+                  <span className="text-2xl font-bold text-slate-900 tracking-tighter">
+                    ${isFreeTrial ? "0.00" : planData.price}
+                  </span>
+                </div>
+              </div>
+            </div>
 
-          <div className="mt-6 flex items-center justify-center gap-2 text-slate-400">
-            <FiShield size={14} />
-            <span className="text-[10px] font-bold uppercase tracking-widest">
-                Secure 256-bit encrypted activation
-            </span>
+            <div className="mt-12 space-y-4">
+              <Link 
+                to="/dashboard/payment"
+                onClick={onActivate}
+                className="w-full flex items-center justify-center gap-2 py-4 bg-slate-900 text-white rounded-lg font-bold text-sm hover:bg-slate-800 transition-all shadow-lg shadow-slate-200"
+              >
+                {isFreeTrial ? "Activate Now" : "Complete Purchase"}
+                <FiArrowRight />
+              </Link>
+              
+              <div className="flex items-center justify-center gap-2 text-slate-400">
+                <FiLock size={12} />
+                <span className="text-[10px] font-bold uppercase tracking-[0.15em]">
+                  Encrypted Checkout
+                </span>
+              </div>
+            </div>
           </div>
+          
         </div>
+
+        <p className="text-center mt-8 text-xs text-slate-400 font-medium">
+          By clicking activate, you agree to our <span className="underline cursor-pointer">Terms of Service</span> and <span className="underline cursor-pointer">Privacy Policy</span>.
+        </p>
       </div>
     </div>
   );
 }
-
-const PlanFeature = ({ text }) => (
-  <div className="flex items-center gap-3">
-    <FiCheckCircle className="text-emerald-500 shrink-0" size={18} />
-    <span className="text-sm font-bold text-slate-700">{text}</span>
-  </div>
-);
-
-export default PaidPlan;

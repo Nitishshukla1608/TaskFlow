@@ -40,31 +40,26 @@ function App() {
   useEffect(() => {
     if (!user) return;
 
-    // Sirf wahi calls suno jo 'active' hain
+    // Sirf wahi calls suno jo 'active' hain aur jisme user participant hai
     const q = query(
       collection(db, "activeCalls"), 
-      where("status", "==", "active")
+      where("status", "==", "active"),
+      where("participants", "array-contains", user.uid)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       snapshot.docChanges().forEach((change) => {
-        // Sirf tabhi alert dikhao jab naya document 'active' status ke saath add ho
         if (change.type === "added") {
           const callData = change.doc.data();
           
-          // Check: User invited hai aur call abhi active hai
-          if (callData.participants.includes(user.uid) && callData.status === "active") {
-            
-            // Notification logic
+          // Double check status as per business logic
+          if (callData.status === "active") {
             const join = window.confirm(`${callData.hostName} is inviting you to a video call. Join?`);
             if (join) {
               navigate(`/video-call/${callData.channelId}`);
             }
           }
         }
-        
-        // Optional: Agar call 'modified' hokar status 'inactive' ho jaye, 
-        // toh aap yahan logic likh sakte hain alert ko auto-close karne ka (agar custom modal ho).
       });
     });
 

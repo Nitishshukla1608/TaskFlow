@@ -1,136 +1,130 @@
-import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { Link, useLocation } from "react-router-dom";
 import { 
   FiBell, 
   FiMessageSquare, 
   FiUser, 
-  FiMoon, 
-  FiSun,
-  FiSearch 
+  FiSearch,
+  FiCommand,
+  FiHelpCircle,
+  FiSettings
 } from "react-icons/fi";
-import { FaCrown } from "react-icons/fa"; // Fixed: FaCrown comes from 'fa' pack
 import { useSelector } from "react-redux";
 
-function Header() {
-  const [darkMode, setDarkMode] = useState(false);
-  const [text, setText] = useState("");
-  
-  // 1. Get user data from Redux
+const Header = () => {
+  const [isScrolled, setIsScrolled] = useState(false);
   const user = useSelector((state) => state.auth.user);
-  
-  // 2. Logic for display name and role
-  const fullName = user?.name || user?.displayName || user?.email?.split('@')[0] || 'User';
-  const firstName = fullName.split(' ')[0];
-  const userRole = user?.role || "Member";
+  const location = useLocation();
+
+  // Handle subtle blur effect on scroll
+  useEffect(() => {
+    const handleScroll = () => setIsScrolled(window.scrollY > 10);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const displayName = user?.name || "Member";
+  const userRole = user?.role || "User";
 
   return (
-    <header className="sticky top-0 z-50 w-full h-20 bg-white/80 backdrop-blur-md border-b border-slate-100 flex items-center justify-between px-8 shadow-sm">
+    <header className={`sticky top-0 z-50 w-full transition-all duration-200 border-b 
+      ${isScrolled ? "bg-white/90 backdrop-blur-md border-slate-200 shadow-sm" : "bg-white border-transparent"}`}>
       
-      {/* LEFT: BRANDING */}
-      <div className="flex items-center gap-4">
-        <div className="group w-11 h-11 bg-indigo-600 text-white flex items-center justify-center rounded-2xl font-black text-xl shadow-lg shadow-indigo-200 transform hover:rotate-6 transition-transform cursor-pointer">
-          T
-        </div>
-        <div className="hidden md:block">
-          <h1 className="text-3xl font-black text-slate-800 tracking-tight">
-            Task<span className="text-indigo-600">Flow</span>
-          </h1>
-          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none">
-            Workspace v2.0
-          </p>
-        </div>
-      </div>
-
-      {/* CENTER: SEARCH BAR */}
-      <div className="hidden lg:flex flex-1 max-w-md mx-10">
-        <div className="relative w-full">
-          <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input 
-            type="text" 
-            placeholder="Search tasks or team member..."
-            onChange={(e) => setText(e.target.value)}
-            value={text}
-            className="w-full bg-slate-50 border-none rounded-2xl py-2.5 pl-12 pr-4 text-sm focus:ring-2 focus:ring-indigo-500/20 transition-all outline-none"
-          />
-        </div>
-      </div>
-
-      {/* RIGHT: USER ACTIONS */}
-      <div className="flex items-center gap-3">
+      <div className="max-w-[1600px] mx-auto h-16 flex items-center justify-between px-6">
         
-        {/* User Info & Role Tag */}
-        <div className="flex flex-col items-end text-right hidden sm:flex">
-          {/* Fixed: Actually rendering the name now */}
-         
-          <span className={`mt-1 px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-tighter ${
-            userRole === 'Admin' 
-            ? 'bg-amber-100 text-amber-700 border border-amber-200' 
-            : 'bg-indigo-50 text-indigo-600 border border-indigo-100'
-          }`}>
-            {userRole}
-          </span>
+        {/* LEFT: BRANDING & PRIMARY NAV */}
+        <div className="flex items-center gap-8">
+          <Link to="/" className="flex items-center gap-2.5 group">
+            <div className="w-8 h-8 bg-slate-900 flex items-center justify-center rounded-lg text-white font-bold transition-all group-hover:bg-indigo-600">
+              T
+            </div>
+            <span className="text-lg font-bold text-slate-900 tracking-tight hidden sm:block">
+              TaskFlow <span className="text-slate-400 font-medium">Enterprise</span>
+            </span>
+          </Link>
+
+          <nav className="hidden md:flex items-center gap-1">
+            {['Dashboard', 'Projects', 'Team'].map((item) => (
+              <Link 
+                key={item}
+                to={`/${item.toLowerCase()}`}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors 
+                  ${location.pathname.includes(item.toLowerCase()) 
+                    ? "bg-slate-100 text-slate-900" 
+                    : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"}`}
+              >
+                {item}
+              </Link>
+            ))}
+          </nav>
         </div>
 
-        <div className="h-8 w-[1px] bg-slate-100 mx-2 hidden sm:block"></div>
-
-        {/* Action Buttons */}
-        <div className="flex items-center gap-1 sm:gap-2">
-
-          {/* Messages */}
-         <Link to="messages">
-         <button className="relative p-2.5 text-slate-500 hover:bg-slate-50 hover:text-indigo-600 rounded-xl transition-all group">
-            <FiMessageSquare size={20} />
-            <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-red-500 border-2 border-white rounded-full group-hover:scale-125 transition-transform"></span>
-          </button>
-         </Link>
-
-          {/* Notifications */}
-          <button className="relative p-2.5 text-slate-500 hover:bg-slate-50 hover:text-indigo-600 rounded-xl transition-all group">
-            <FiBell size={20} />
-            <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-red-500 border-2 border-white rounded-full group-hover:scale-125 transition-transform"></span>
-          </button>
-
-          {/* Theme Toggle */}
-          <button
-            onClick={() => setDarkMode(!darkMode)}
-            className="p-2.5 text-slate-500 hover:bg-slate-50 hover:text-indigo-600 rounded-xl transition-all"
-          >
-            {darkMode ? <FiSun size={20} /> : <FiMoon size={20} />}
-          </button>
+        {/* CENTER: GLOBAL COMMAND SEARCH */}
+        <div className="hidden lg:flex flex-1 max-w-lg mx-8">
+          <div className="relative w-full group">
+            <FiSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors" />
+            <input 
+              type="text" 
+              placeholder="Search or jump to..."
+              className="w-full bg-slate-100 border border-transparent rounded-lg py-1.5 pl-10 pr-12 text-sm text-slate-900 placeholder:text-slate-500 focus:bg-white focus:border-slate-300 focus:ring-4 focus:ring-indigo-500/5 transition-all outline-none"
+            />
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-40 group-focus-within:opacity-0 transition-opacity pointer-events-none">
+              <FiCommand size={12} />
+              <span className="text-xs font-bold font-sans text-[10px]">K</span>
+            </div>
+          </div>
         </div>
 
-
-
-
-          {/* Premium icon */}
-          {user.role == "Admin" && (<Link
-          to="premium"
-          className="ml-2 flex items-center gap-2 group p-1 pr-1 rounded-2xl hover:bg-slate-50 transition-all border border-transparent hover:border-slate-100"
-        >
-          <div className="w-10 h-10 bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center rounded-xl shadow-md group-hover:shadow-indigo-200 transition-all overflow-hidden">
-            
-              <FaCrown size={20} className="text-white" />
+        {/* RIGHT: UTILITIES & PROFILE */}
+        <div className="flex items-center gap-2">
           
+          {/* Utility Buttons */}
+          <div className="flex items-center border-r border-slate-200 pr-4 mr-2 gap-1">
+            <button className="p-2 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors relative" title="Help">
+              <FiHelpCircle size={18} />
+            </button>
+            <Link to="messages"     className="p-2 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors relative" title="Messages">
+              <FiMessageSquare size={18} />
+              <span className="absolute top-2 right-2 w-1.5 h-1.5 bg-indigo-600 rounded-full"></span>
+            </Link>
+            <button className="p-2 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors relative" title="Notifications">
+              <FiBell size={18} />
+              <span className="absolute top-2 right-2 w-1.5 h-1.5 bg-red-500 rounded-full ring-2 ring-white"></span>
+            </button>
           </div>
-        </Link>
-)}
 
-        {/* Profile Avatar */}
-        <Link
-          to="profile"
-          className="ml-2 flex items-center gap-2 group p-1 pr-1 rounded-2xl hover:bg-slate-50 transition-all border border-transparent hover:border-slate-100"
-        >
-          <div className="w-10 h-10 bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center rounded-xl shadow-md group-hover:shadow-indigo-200 transition-all overflow-hidden">
-            {user?.photoURL ? (
-              <img src={user.photoURL} alt="profile" className="w-full h-full object-cover" />
-            ) : (
-              <FiUser size={20} className="text-white" />
-            )}
+          {/* User Profile Hook */}
+          <div className="flex items-center gap-3 pl-2">
+            <div className="hidden xl:flex flex-col items-end">
+              <span className="text-sm font-semibold text-slate-900 leading-none">
+                {displayName}
+              </span>
+              <span className={`mt-1.5 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider
+                ${userRole === 'Admin' 
+                  ? 'bg-amber-50 text-amber-700 border border-amber-200/50' 
+                  : 'bg-slate-50 text-slate-600 border border-slate-200'
+                }`}>
+                {userRole}
+              </span>
+            </div>
+
+            <Link
+              to="profile"
+              className="w-9 h-9 bg-slate-200 rounded-lg overflow-hidden border border-slate-200 hover:ring-2 hover:ring-indigo-500/20 transition-all"
+            >
+              {user?.photoURL ? (
+                <img src={user.photoURL} alt="Profile" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-slate-500 bg-slate-100 uppercase text-xs font-bold">
+                  {displayName.charAt(0)}
+                </div>
+              )}
+            </Link>
           </div>
-        </Link>
+        </div>
       </div>
     </header>
   );
-}
+};
 
 export default Header;

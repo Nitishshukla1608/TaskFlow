@@ -1,40 +1,46 @@
-import { useState } from "react";
-import { loginUser } from "../../Services/authService";
+import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
-import { setUser } from "../../Context/AuthContext";
 import { 
-  Mail, Lock, LogIn, ArrowRight, ShieldCheck, 
-  Briefcase, Eye, EyeOff, PlusCircle 
+  Mail, Lock, ArrowRight, ShieldCheck, 
+  Briefcase, Eye, EyeOff, PlusCircle, Loader2 
 } from "lucide-react";
 
-const Login = () => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [role, setRole] = useState(""); 
-  const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+import { loginUser } from "../../Services/authService";
+import { setUser } from "../../Context/AuthContext";
 
+/* ---------- SHARED INDUSTRIAL TOKENS ---------- */
+const INPUT_BASE = "w-full pl-11 pr-12 py-3.5 rounded-xl border border-slate-200 bg-white/50 text-[13px] font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-indigo-600/5 focus:border-indigo-600 transition-all shadow-sm appearance-none";
+const LABEL_BASE = "block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-[0.2em] ml-1";
+const ICON_BASE = "absolute left-4 top-1/2 -translate-y-1/2 text-indigo-500 w-4.5 h-4.5 z-10";
+
+const Login = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
+  const [form, setForm] = useState({ email: "", password: "", role: "" });
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const updateField = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+
   const handleLogin = async (e) => {
     e.preventDefault();
-    if (!role) {
-      setError("Please select your access role");
-      return;
-    }
+    if (!form.role) return setError("Please specify your access tier.");
+    
     setLoading(true);
     setError("");
 
     try {
-      const authUser = await loginUser(email, password);
+      const authUser = await loginUser(form.email, form.password);
       
-      if (authUser.role !== role) {
-        throw new Error(`Unauthorized: You are not registered as an ${role}`);
+      // 🛡️ Role Guard
+      if (authUser.role !== form.role) {
+        throw new Error(`Access Denied: You do not have ${form.role} privileges.`);
       }
 
+      // 🧹 Serialization for Redux (Converts Firebase Timestamps to Millis)
       const serializableUser = {
         ...authUser,
         lastModified: authUser.lastModified?.toMillis ? authUser.lastModified.toMillis() : authUser.lastModified,
@@ -44,47 +50,50 @@ const Login = () => {
       dispatch(setUser(serializableUser));
       navigate("/DashboardWrapper", { replace: true });
     } catch (err) {
-      setError(err.message || "Invalid credentials");
+      setError(err.message || "Authentication failed. Check credentials.");
     } finally {
       setLoading(false);
     }
   };
 
-  // Reusable Tailwind Classes
-  const inputStyle = "w-full pl-11 pr-12 py-3 rounded-2xl border border-gray-200 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all text-sm bg-white/50 shadow-sm appearance-none";
-  const labelStyle = "block text-[11px] font-bold text-gray-400 mb-2 uppercase tracking-[0.15em] ml-1";
-  const iconStyle = "absolute left-4 top-1/2 -translate-y-1/2 text-indigo-400 w-5 h-5 z-10";
-
   return (
-    <div className="min-h-screen bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-indigo-100 via-slate-50 to-white flex items-center justify-center p-6 font-sans">
+    <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-6 antialiased font-sans relative overflow-hidden">
       
-      <div className="w-full max-w-[480px] bg-white/70 backdrop-blur-xl rounded-[2.5rem] shadow-[0_30px_60px_rgba(0,0,0,0.12)] border border-white/60 overflow-hidden relative z-10">
-        <div className="p-10 pb-6">
+      {/* Background Ambience */}
+      <div className="absolute top-0 left-0 w-full h-full pointer-events-none z-0">
+        <div className="absolute -top-24 -left-24 w-96 h-96 bg-indigo-100 rounded-full blur-[120px] opacity-60" />
+        <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-slate-200 rounded-full blur-[120px] opacity-40" />
+      </div>
+
+      <div className="w-full max-w-[460px] bg-white rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-slate-100 overflow-hidden relative z-10">
+        <div className="p-10 lg:p-12">
           
-          <header className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-14 h-14 bg-indigo-600 rounded-2xl shadow-lg shadow-indigo-200 mb-4 transform -rotate-6">
-              <ShieldCheck className="text-white w-7 h-7" />
+          <header className="text-center mb-10">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-slate-900 rounded-2xl shadow-xl shadow-slate-200 mb-6 transform -rotate-3 transition-transform hover:rotate-0">
+              <ShieldCheck className="text-white w-8 h-8" />
             </div>
-            <h2 className="text-3xl font-black text-slate-900 tracking-tight">TaskFlow Login</h2>
+            <h2 className="text-2xl font-black text-slate-900 tracking-tight uppercase">System Access</h2>
+            <p className="text-[11px] font-bold text-slate-400 mt-2 uppercase tracking-widest">Enter your workspace credentials</p>
           </header>
 
-          <form onSubmit={handleLogin} className="space-y-5">
+          <form onSubmit={handleLogin} className="space-y-6">
             {/* ROLE SELECTION */}
             <div className="relative">
-              <label className={labelStyle}>Access Role</label>
+              <label className={LABEL_BASE}>Access Tier</label>
               <div className="relative">
-                <Briefcase className={iconStyle} />
+                <Briefcase className={ICON_BASE} />
                 <select 
-                  className={inputStyle}
-                  value={role}
-                  onChange={(e) => setRole(e.target.value)}
+                  name="role"
+                  className={INPUT_BASE}
+                  value={form.role}
+                  onChange={updateField}
                   required
                 >
-                  <option value="" disabled>Select your role</option>
-                  <option value="Admin">Admin</option>
-                  <option value="Employee">Employee</option>
+                  <option value="" disabled>Specify Role</option>
+                  <option value="Admin">Administrator</option>
+                  <option value="Employee">Staff Member</option>
                 </select>
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
                   <ArrowRight className="w-4 h-4 rotate-90" />
                 </div>
               </div>
@@ -92,15 +101,16 @@ const Login = () => {
 
             {/* EMAIL FIELD */}
             <div className="relative">
-              <label className={labelStyle}>Email Address</label>
+              <label className={LABEL_BASE}>Work Email</label>
               <div className="relative">
-                <Mail className={iconStyle} />
+                <Mail className={ICON_BASE} />
                 <input 
-                  className={inputStyle} 
+                  name="email"
+                  className={INPUT_BASE} 
                   type="email" 
-                  placeholder="name@company.com" 
-                  value={email} 
-                  onChange={(e) => setEmail(e.target.value)} 
+                  placeholder="name@nexus.io" 
+                  value={form.email} 
+                  onChange={updateField} 
                   required 
                 />
               </div>
@@ -108,37 +118,39 @@ const Login = () => {
 
             {/* PASSWORD FIELD */}
             <div className="relative">
-              <div className="flex justify-between items-end">
-                <label className={labelStyle}>Security Password</label>
+              <div className="flex justify-between items-end mb-2">
+                <label className={LABEL_BASE}>Security Key</label>
                 <Link 
                   to="/forgot-password" 
-                  className="text-[10px] font-black text-indigo-500 uppercase tracking-widest hover:text-indigo-700 transition-colors mb-2 mr-1"
+                  className="text-[10px] font-black text-indigo-600 hover:text-indigo-800 uppercase tracking-widest transition-colors mr-1"
                 >
-                  Forgot?
+                  Lost Key?
                 </Link>
               </div>
               <div className="relative">
-                <Lock className={iconStyle} />
+                <Lock className={ICON_BASE} />
                 <input 
-                  className={inputStyle} 
+                  name="password"
+                  className={INPUT_BASE} 
                   type={showPassword ? "text" : "password"} 
                   placeholder="••••••••"
-                  value={password} 
-                  onChange={(e) => setPassword(e.target.value)} 
+                  value={form.password} 
+                  onChange={updateField} 
                   required 
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-indigo-600 transition-colors z-20 focus:outline-none"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-600 transition-colors z-20"
                 >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
             </div>
 
             {error && (
-              <div className="bg-red-50 text-red-600 px-4 py-3 rounded-xl text-xs font-bold border border-red-100 flex items-center gap-2 animate-pulse">
+              <div className="bg-rose-50 text-rose-600 px-4 py-3 rounded-xl text-[11px] font-bold border border-rose-100 flex items-center gap-2 animate-shake">
+                <div className="w-1.5 h-1.5 bg-rose-600 rounded-full animate-pulse" />
                 {error}
               </div>
             )}
@@ -146,35 +158,29 @@ const Login = () => {
             <button 
               type="submit" 
               disabled={loading}
-              className="group relative w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl hover:bg-indigo-600 active:scale-95 transition-all overflow-hidden"
+              className="group relative w-full py-4 bg-slate-900 text-white rounded-xl font-black text-[11px] uppercase tracking-[0.2em] shadow-2xl shadow-slate-200 hover:bg-black active:scale-[0.98] transition-all"
             >
-              <span className="relative z-10 flex items-center justify-center gap-2">
-                {loading ? "Authenticating..." : "Enter Workspace"}
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              <span className="flex items-center justify-center gap-3">
+                {loading ? <Loader2 className="animate-spin" size={16} /> : "Authorize & Enter"}
+                {!loading && <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />}
               </span>
             </button>
           </form>
         </div>
 
-        {/* --- BOTTOM SECTION --- */}
-        <div className="px-10 py-6 bg-slate-50/50 border-t border-slate-100 text-center">
-          <p className="text-xs text-slate-500 font-semibold mb-3">
-            Setting up a new team?
+        {/* --- FOOTER REGISTRATION --- */}
+        <footer className="px-10 py-8 bg-slate-50 border-t border-slate-100 text-center">
+          <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest mb-4">
+            New Organization?
           </p>
           <Link 
             to="/register-org" 
-            className="inline-flex items-center gap-2 px-6 py-2.5 bg-white border border-slate-200 text-indigo-600 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-sm hover:border-indigo-600 hover:bg-indigo-50 transition-all active:scale-95"
+            className="inline-flex items-center gap-2 px-8 py-3 bg-white border border-slate-200 text-slate-900 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-sm hover:border-indigo-600 hover:text-indigo-600 transition-all active:scale-95"
           >
             <PlusCircle className="w-4 h-4" />
-            Create New Organization
+            Initialize Workspace
           </Link>
-        </div>
-      </div>
-
-      {/* Background Decorative Element */}
-      <div className="fixed top-0 left-0 w-full h-full pointer-events-none -z-10 opacity-50">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-200 rounded-full blur-[120px]" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-100 rounded-full blur-[120px]" />
+        </footer>
       </div>
     </div>
   );

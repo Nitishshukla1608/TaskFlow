@@ -173,22 +173,55 @@ export const addTask = async (newTask) => {
   }
 };
 
-export const addOrganization = async (organization) => {
+/**
+ * Adds a new organization to Firestore.
+ * Commercial Note: Returns the full object to prevent immediate re-fetching,
+ * which often triggers "Insufficient Permissions" errors on the UI.
+ */
+export const addOrganization = async (organization, planData = null, isFreeTrial = false) => {
   try {
-    const orgId = `ORG_${Date.now()}`;
+    // 1. Generate unique ID
+    const entropy = Math.random().toString(36).substring(2, 7).toUpperCase();
+    const orgId = `ORG_${Date.now()}_${entropy}`;
     const docRef = doc(db, "organization", orgId);
 
+    // 2. Structure data with subscription metadata (Standard SaaS practice)
     const orgData = {
       ...organization,
       orgId,
-      createdAt: serverTimestamp(),
       status: "active",
+      createdAt: serverTimestamp(),
+      createdBy: auth.currentUser?.uid || "system",
+      
+      // Metadata for scaling
+      subscription: {
+        tier: isFreeTrial ? "trial" : (planData?.type || "standard"),
+        isTrialActive: isFreeTrial,
+        trialEndsAt: isFreeTrial 
+          ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() 
+          : null,
+      },
+      settings: {
+        isSetupComplete: false,
+        theme: "default"
+      }
     };
 
+    // 3. Execution
     await setDoc(docRef, orgData);
-    return orgId;
+
+    // 4. Return the ID AND the data 
+    // This allows your UI to update Redux/Context without triggering a new 'get' request
+    return { orgId, orgData };
+    
   } catch (error) {
-    console.error("Error in adding organization:", error);
+    // LOGGING: In a commercial app, use a service like Sentry here
+    console.error("Infrastructure Deployment Failed:", error.code, error.message);
+    
+    // Friendly error for the UI
+    if (error.code === 'permission-denied') {
+      throw new Error("Security Policy Violation: You do not have permission to provision new organizations.");
+    }
     throw error;
   }
 };
@@ -245,46 +278,33 @@ export const listenToUser = (uid, callback) => {
 
 
 
-export const listenToOrganization = (callback) => {
-
-  const q = query(collection(db, "organization"));
-  return onSnapshot(q, (snapshot) => {
-    const organizations = snapshot.docs.map((doc) => {
-      const data = doc.data();
-      return {
-        id: doc.id,
-        ...data,
-        createdAt: data.createdAt?.toMillis?.() || null,
-      };
-    });
-    callback(organizations);
-  });
-};
-
-
-export const listenToTasks = (userData, callback) => {
-  const { uid, role, organization } = userData;
-  if (!uid || typeof callback !== 'function') return () => {};
-
-  const tasksRef = collection(db, "tasks");
-  let q;
-
-  // Admins see everything in their org, Employees see assigned tasks
-  if (role === "Admin") {
-    q = query(tasksRef, where("organization", "==", organization));
-  } else {
-    q = query(tasksRef, where("assignedToUid", "==", uid));
+// Listen only to ONE specific org
+export const listenToOrganization = (orgId, callback) => {
+  if (!orgId || typeof orgId !== 'string') {
+    console.warn("No valid orgId provided to listenToOrganization");
+    return () => {};
   }
 
-  return onSnapshot(q, (snapshot) => {
-    const tasks = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      createdAt: doc.data().createdAt?.toMillis?.() || null,
-    }));
-    callback(tasks);
-  }, (err) => console.error("Task Listener Error:", err));
+  const docRef = doc(db, "organization", orgId); // ✅ singular as per addOrganization
+
+  return onSnapshot(
+    docRef,
+    (docSnap) => {
+      if (docSnap.exists()) {
+        callback({ id: docSnap.id, ...docSnap.data() });
+      } else {
+        console.warn("Organization not found:", orgId);
+        callback(null);
+      }
+    },
+    (err) => {
+      console.error("Org Listener Error:", err);
+    }
+  );
 };
+
+
+// Note: listenToTasks has been moved to taskService.jsx to avoid redundancy.
 
 export const listenToTeam = (organizationName, callback) => {
   if (!organizationName) return () => {};
@@ -336,36 +356,4 @@ export const observeAuthState = (callback) => {
 
 
 
-//// HERE ARE THE METHODS OF CHAT SYSTTEM...............
-
-// ✅ SEND MESSAGE
-export const sendMessage = async (taskId, messageData) => {
-  try {
-    await addDoc(collection(db, "tasks", taskId, "messages"), {
-      ...messageData,
-      createdAt: serverTimestamp(),
-    });
-  } catch (error) {
-    console.error("Error sending message:", error);
-    throw error;
-  }
-};
-
-export const subscribeToMessages = (taskId, callback) => {
-  const q = query(
-    collection(db, "tasks", taskId, "messages"),
-    orderBy("createdAt", "asc")
-  );
-
-  const unsubscribe = onSnapshot(q, (snapshot) => {
-    const messages = snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
-
-    callback(messages);
-  });
-
-  return unsubscribe;
-};
-
+// Chat methods have been moved to message.jsx to avoid redundancy.

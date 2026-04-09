@@ -6,13 +6,15 @@ import { useSelector, useDispatch } from "react-redux";
 
 import {
   listenToUser,
-  listenToTasks,
+  
   listenToTeam,
   listenToOrganization,
 } from "../../Services/authService";
+import {listenToTasks} from "../../Services/taskService"
+
 
 // Redux actions
-import { setUser, setTasks, setMembers, setOrganizations } from "../../Context/AuthContext";
+import { setUser, setTasks, setMembers, setOrganizations, setOrganization } from "../../Context/AuthContext";
 
 function AdminDashboard() {
   const dispatch = useDispatch();
@@ -55,17 +57,23 @@ function AdminDashboard() {
   }, [authUser?.organization, dispatch]);
 
   /* =========================
-      3. LISTEN TO ORGANIZATIONS
+      3. LISTEN TO ORGANIZATION DETAILS
   ========================= */
   useEffect(() => {
-    const unsubscribe = listenToOrganization((organizations) => {
-      dispatch(setOrganizations(organizations));
+    // 🛑 Wait for organization ID from the profile
+    const orgId = typeof authUser?.organization === 'object' ? authUser.organization.id : authUser?.organization;
+    
+    if (!orgId) return;
+
+    const unsubscribe = listenToOrganization(orgId, (orgData) => {
+      // ✅ Update Redux with latest organization settings/status
+      dispatch(setOrganization(orgData));
     });
 
     return () => {
       if (typeof unsubscribe === "function") unsubscribe();
     };
-  }, [dispatch]);
+  }, [authUser?.organization, dispatch]);
 
   /* =========================
       4. LISTEN TO TASKS (FIXED)

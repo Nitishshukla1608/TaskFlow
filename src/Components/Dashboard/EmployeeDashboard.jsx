@@ -7,11 +7,11 @@ import { useSelector, useDispatch } from "react-redux";
 import {
   listenToUser,
   listenToTeam,
-  listenToTasks,
   listenToOrganization
 } from "../../Services/authService";
+import {listenToTasks} from "../../Services/taskService"
 
-import { setUser, setTasks, setMembers, setOrganizations } from "../../Context/AuthContext";
+import { setUser, setTasks, setMembers, setOrganizations, setOrganization } from "../../Context/AuthContext";
 
 function EmployeeDashboard() {
   const dispatch = useDispatch();
@@ -49,17 +49,22 @@ function EmployeeDashboard() {
   }, [authUser?.organization, dispatch]);
 
   /* =========================
-      LISTEN TO ORGANIZATIONS
+      LISTEN TO ORGANIZATION DETAILS
   ========================= */
   useEffect(() => {
-    const unsubscribe = listenToOrganization((organizations) => {
-      dispatch(setOrganizations(organizations));
+    // 🛑 Wait for organization ID from the profile
+    const orgId = typeof authUser?.organization === 'object' ? authUser.organization.id : authUser?.organization;
+    
+    if (!orgId) return;
+
+    const unsubscribe = listenToOrganization(orgId, (orgData) => {
+      dispatch(setOrganization(orgData));
     });
     
     return () => {
       if (typeof unsubscribe === 'function') unsubscribe();
     };
-  }, [dispatch]);
+  }, [authUser?.organization, dispatch]);
 
   /* =========================
       LISTEN TO TASKS

@@ -1,50 +1,54 @@
-import React, { useState } from "react";
-import { useDispatch } from "react-redux";
+import React, { useState, useCallback } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import { Link, useNavigate } from "react-router-dom";
 import emailjs from "@emailjs/browser";
-
 import { 
-  FiBriefcase, FiMail, FiUsers, FiUploadCloud, 
-  FiMapPin, FiCheckCircle, FiArrowLeft, FiShield 
+  FiBriefcase, FiMail, FiUsers, FiGlobe, 
+  FiArrowLeft, FiLoader, FiShield, FiCheck 
 } from "react-icons/fi";
-import {addOrganization} from "../../Services/authService"
-import {setOrganization} from "../../Context/AuthContext"
 
-const INPUT_CLASS = "w-full pl-11 pr-4 py-3 bg-white/50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all text-slate-700 font-medium placeholder:text-slate-400";
-const LABEL_STYLE = "text-[11px] font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block";
-const ICON_STYLE = "absolute left-4 top-1/2 -translate-y-1/2 text-indigo-500 w-5 h-5";
+import { addOrganization } from "../../Services/authService";
+import { setOrganization } from "../../Context/AuthContext";
 
-function CRA_Org() {
-  const dispatch  = useDispatch();
+/* ---------- SHARED DESIGN TOKENS ---------- */
+const INPUT_BASE = "block w-full px-4 py-2.5 bg-white border border-slate-300 rounded-md text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-600/10 focus:border-indigo-600 transition-all duration-200";
+const LABEL_BASE = "block text-[11px] font-semibold text-slate-600 uppercase tracking-wider mb-1.5";
+const SECTION_DESC = "text-xs text-slate-500 mb-4";
+
+export default function OrganizationDeployment() {
+  const dispatch = useDispatch();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("")
+
+  // Redux state for enterprise plans
+  const currentPlan = useSelector((state) => state.plan?.currentPlanData);
+  const isFreeTrial = useSelector((state) => state.plan?.isFreeTrial);
+
+  const [uiState, setUiState] = useState({ loading: false, error: null });
   const [formData, setFormData] = useState({
-    name : "",
+    name: "",
     orgEmail: "",
     industry: "",
     teamSize: "",
     location: "",
-    role: "Admin", // Always Admin as per your requirement
   });
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
+  const handleChange = useCallback((e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  }, []);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault(); // Sabse pehle preventDefault lagayein
-    setLoading(true);
-    setError("");
+  const handleDeployment = async (e) => {
+    e.preventDefault();
+    setUiState({ loading: true, error: null });
 
     try {
-      // 1. Redux/Context update (formData se data lein)
-      dispatch(setOrganization(formData.name));
-
-      // 2. Firebase service call
-      await addOrganization(formData);
+      // 1. Core Resource Provisioning
+      const { orgId } = await addOrganization(formData, currentPlan, isFreeTrial);
       
-      // 3. EmailJS call (formData. field use karein)
+      // 2. Global Context Update
+      dispatch(setOrganization({ name: formData.name, id: orgId }));
+
+      // 3. Communications Relay
       try {
         await emailjs.send(
           "service_d6r58da",
@@ -52,195 +56,137 @@ function CRA_Org() {
           {
             email: formData.orgEmail,
             company_name: formData.name,
-            Company_email: formData.orgEmail,
-            industry: formData.industry,      // New field
-            team_size: formData.teamSize,     // New field
-            address: formData.location,
-     
+            tier: isFreeTrial ? "Trial" : currentPlan?.type || "Standard",
+            org_id: orgId
           },
           "RG-epL79tbuC7qcZI"
         );
-      } catch (emailErr) {
-        // Agar email fail ho jaye toh registeration stop nahi honi chahiye
-        console.error("EmailJS Error:", emailErr);
+      } catch (err) {
+        console.warn("Communication relay non-critical failure:", err);
       }
 
-      alert("🚀 Organization created successfully!");
       navigate("/createdmin");
-
     } catch (err) {
-      console.error("Registration Error:", err);
-      setError(err.message || "Failed to create organization. Please try again.");
-    } finally {
-      setLoading(false);
+      setUiState({ 
+        loading: false, 
+        error: err.message || "An infrastructure error occurred. Please contact system support." 
+      });
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center p-6 py-12">
-      <div className="max-w-4xl w-full grid grid-cols-1 lg:grid-cols-5 bg-white rounded-[3rem] shadow-2xl shadow-indigo-100/50 border border-slate-100 overflow-hidden">
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 antialiased selection:bg-indigo-100">
+      <div className="max-w-5xl w-full bg-white border border-slate-200 shadow-sm flex flex-col md:flex-row overflow-hidden rounded-lg">
         
-        {/* Left Side: Info Panel */}
-        <div className="lg:col-span-2 bg-indigo-600 p-10 text-white flex flex-col justify-between relative overflow-hidden">
-          <div className="relative z-10">
-            <div className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center mb-8">
-              <FiShield size={24} />
+        {/* Left: Product Specification */}
+        <div className="md:w-[380px] bg-slate-900 p-10 text-white flex flex-col justify-between">
+          <div>
+            <div className="flex items-center gap-2 mb-12">
+              <div className="w-8 h-8 bg-indigo-600 flex items-center justify-center rounded">
+                <FiShield className="text-white" />
+              </div>
+              <span className="text-lg font-bold tracking-tight">TaskFlow<span className="text-indigo-500">.</span></span>
             </div>
-            <h2 className="text-3xl font-black leading-tight mb-4">Register Your Organization</h2>
-            <p className="text-indigo-100 font-medium text-sm leading-relaxed">
-              Join hundreds of teams managing their workflows efficiently. Set up your workspace in minutes.
+
+            <h1 className="text-3xl font-semibold tracking-tight leading-tight mb-6">
+              Establish your organization's <span className="text-slate-400 font-normal italic">digital node.</span>
+            </h1>
+
+            <div className="space-y-6">
+              <FeatureItem title="Enterprise Sovereignty" desc="Complete control over data encryption and user governance." />
+              <FeatureItem title="Scalable Architecture" desc="Infrastructure adapts to your team load automatically." />
+            </div>
+          </div>
+
+          <div className="pt-8 border-t border-slate-800">
+            <p className="text-[10px] text-slate-500 font-mono uppercase tracking-widest">
+              v4.2.0-stable // NEXUS OS
             </p>
           </div>
+        </div>
 
-          <div className="space-y-4 relative z-10 mt-10">
-            <div className="flex items-center gap-3 text-xs font-bold bg-white/10 p-3 rounded-xl border border-white/10">
-              <FiCheckCircle className="text-emerald-400" /> Secure Cloud Storage
-            </div>
-            <div className="flex items-center gap-3 text-xs font-bold bg-white/10 p-3 rounded-xl border border-white/10">
-              <FiCheckCircle className="text-emerald-400" /> Admin Control Panel
+        {/* Right: Configuration Interface */}
+        <div className="flex-1 p-8 lg:p-16">
+          <div className="flex justify-between items-center mb-10">
+            <Link to="/login" className="text-xs font-semibold text-slate-400 hover:text-indigo-600 flex items-center gap-2 transition-colors">
+              <FiArrowLeft /> BACK TO PORTAL
+            </Link>
+            <div className="flex gap-1">
+              <div className="h-1 w-6 bg-indigo-600 rounded-full" />
+              <div className="h-1 w-6 bg-slate-100 rounded-full" />
             </div>
           </div>
 
-          {/* Decorative Circle */}
-          <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-indigo-500 rounded-full opacity-50"></div>
-        </div>
-
-        {/* Right Side: Form */}
-        <div className="lg:col-span-3 p-8 md:p-12">
-          <Link to="/login" className="inline-flex items-center gap-2 text-slate-400 hover:text-indigo-600 text-xs font-bold mb-8 transition-colors">
-            <FiArrowLeft /> BACK TO LOGIN
-          </Link>
-
-
-
-          {error && (
-  <div className="mb-6 p-4 bg-rose-50 border border-rose-100 text-rose-600 text-xs font-bold rounded-2xl flex items-center gap-2 animate-shake">
-    <FiShield className="shrink-0" />
-    {error}
-  </div>
-)}
-
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              
-              {/* Org Name */}
-              <div className="md:col-span-2">
-                <label className={LABEL_STYLE}>Organization Name</label>
-                <div className="relative">
-                  <FiBriefcase className={ICON_STYLE} />
-                  <input 
-                    name="name" 
-                    required 
-                    type="text" 
-                    placeholder="e.g. Acme Corp" 
-                    className={INPUT_CLASS} 
-                    onChange={handleChange}
-                  />
-                </div>
-              </div>
-
-              {/* Org Email */}
-              <div className="md:col-span-1">
-                <label className={LABEL_STYLE}>Company Email</label>
-                <div className="relative">
-                  <FiMail className={ICON_STYLE} />
-                  <input 
-                    name="orgEmail" 
-                    required 
-                    type="email" 
-                    placeholder="admin@company.com" 
-                    className={INPUT_CLASS} 
-                    onChange={handleChange}
-                  />
-                </div>
-              </div>
-
-              {/* Fixed Role: Admin */}
-              <div className="md:col-span-1">
-                <label className={LABEL_STYLE}>Your Access Role</label>
-                <div className="relative">
-                  <FiShield className={ICON_STYLE} />
-                  <select 
-                    name="role" 
-                    className={`${INPUT_CLASS} cursor-not-allowed opacity-70`} 
-                    disabled 
-                    value="Admin"
-                  >
-                    <option value="Admin">Admin (Organization Creator)</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Industry */}
-              <div>
-                <label className={LABEL_STYLE}>Industry</label>
-                <div className="relative">
-                  <FiBriefcase className={ICON_STYLE} />
-                  <select name="industry" required className={INPUT_CLASS} onChange={handleChange}>
-                    <option value="">Select Industry</option>
-                    <option value="tech">Technology</option>
-                    <option value="finance">Finance</option>
-                    <option value="healthcare">Healthcare</option>
-                    <option value="education">Education</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Team Size */}
-              <div>
-                <label className={LABEL_STYLE}>Team Size</label>
-                <div className="relative">
-                  <FiUsers className={ICON_STYLE} />
-                  <select name="teamSize" required className={INPUT_CLASS} onChange={handleChange}>
-                    <option value="">Expected Members</option>
-                    <option value="1-10">1-10 Members</option>
-                    <option value="11-50">11-50 Members</option>
-                    <option value="50+">50+ Members</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Location */}
-              <div className="md:col-span-2">
-                <label className={LABEL_STYLE}>Headquarters Location</label>
-                <div className="relative">
-                  <FiMapPin className={ICON_STYLE} />
-                  <input 
-                    name="location" 
-                    required 
-                    type="text" 
-                    placeholder="City, Country" 
-                    className={INPUT_CLASS} 
-                    onChange={handleChange}
-                  />
-                </div>
-              </div>
-
-              {/* File Upload (Optional) */}
-              <div className="md:col-span-2">
-                <label className={LABEL_STYLE}>Registration Paper (Optional)</label>
-                <div className="relative group cursor-pointer">
-                  <input 
-                    type="file" 
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
-                  />
-                  <div className="w-full p-6 border-2 border-dashed border-slate-200 rounded-[2rem] flex flex-col items-center gap-2 group-hover:border-indigo-400 transition-all bg-slate-50/50">
-                    <FiUploadCloud size={24} className="text-slate-400 group-hover:text-indigo-500" />
-                    <span className="text-xs font-bold text-slate-400">Click to upload PDF or Image</span>
-                  </div>
-                </div>
-              </div>
-
+          {uiState.error && (
+            <div className="mb-8 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 text-sm flex items-center gap-3">
+              <FiShield className="shrink-0" /> {uiState.error}
             </div>
+          )}
 
-            <button 
-              type="submit" 
-              disabled={loading}
-              className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-indigo-600 transition-all active:scale-95 disabled:opacity-50 mt-4 shadow-xl shadow-slate-200"
-            >
-              {loading ? "Registering Workspace..." : "Create Organization Account"}
-            </button>
+          <form onSubmit={handleDeployment} className="space-y-8">
+            <section>
+              <h2 className="text-lg font-semibold text-slate-900 mb-1">Organization Identity</h2>
+              <p className={SECTION_DESC}>Specify the legal entity details for your workspace.</p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="md:col-span-2">
+                  <label className={LABEL_BASE}>Entity Name</label>
+                  <input name="name" required type="text" placeholder="Nexus Technologies Inc." className={INPUT_BASE} onChange={handleChange} />
+                </div>
+                <div>
+                  <label className={LABEL_BASE}>Administrative Email</label>
+                  <input name="orgEmail" required type="email" placeholder="admin@nexus.com" className={INPUT_BASE} onChange={handleChange} />
+                </div>
+                <div>
+                  <label className={LABEL_BASE}>Region / Headquarters</label>
+                  <input name="location" required type="text" placeholder="London, UK" className={INPUT_BASE} onChange={handleChange} />
+                </div>
+              </div>
+            </section>
+
+            <section className="pt-4">
+              <h2 className="text-lg font-semibold text-slate-900 mb-1">System Capacity</h2>
+              <p className={SECTION_DESC}>Select industry and initial user seating for resource allocation.</p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className={LABEL_BASE}>Industry Sector</label>
+                  <select name="industry" required className={INPUT_BASE} onChange={handleChange}>
+                    <option value="">Choose sector...</option>
+                    <option value="tech">Technology & SaaS</option>
+                    <option value="finance">Banking & Fintech</option>
+                    <option value="healthcare">Healthcare Systems</option>
+                    <option value="logistics">Supply Chain</option>
+                  </select>
+                </div>
+                <div>
+                  <label className={LABEL_BASE}>Required Seats</label>
+                  <select name="teamSize" required className={INPUT_BASE} onChange={handleChange}>
+                    <option value="">Volume...</option>
+                    <option value="1-20">1 - 20 Users</option>
+                    <option value="21-100">21 - 100 Users</option>
+                    <option value="100+">100+ (Enterprise)</option>
+                  </select>
+                </div>
+              </div>
+            </section>
+
+            <div className="pt-6">
+              <button 
+                type="submit" 
+                disabled={uiState.loading}
+                className="w-full flex items-center justify-center gap-3 py-3.5 bg-slate-900 text-white rounded font-bold text-sm hover:bg-indigo-600 transition-all shadow-lg shadow-slate-200 disabled:opacity-50"
+              >
+                {uiState.loading ? (
+                  <> <FiLoader className="animate-spin" /> PROVISIONING SYSTEM... </>
+                ) : (
+                  "DEPLOY ORGANIZATION ACCOUNT"
+                )}
+              </button>
+              <p className="mt-4 text-[10px] text-slate-400 text-center uppercase tracking-widest leading-relaxed">
+                By deploying, you agree to the <span className="underline cursor-pointer">Service Level Agreement</span> and <span className="underline cursor-pointer">DPA</span>.
+              </p>
+            </div>
           </form>
         </div>
       </div>
@@ -248,4 +194,15 @@ function CRA_Org() {
   );
 }
 
-export default CRA_Org;
+/* ---------- INTERNAL UI HELPER ---------- */
+const FeatureItem = ({ title, desc }) => (
+  <div className="flex gap-4">
+    <div className="mt-1 w-5 h-5 bg-indigo-500/20 rounded flex items-center justify-center shrink-0">
+      <FiCheck className="text-indigo-400 text-xs" />
+    </div>
+    <div>
+      <h3 className="text-sm font-semibold text-slate-100">{title}</h3>
+      <p className="text-xs text-slate-500 mt-1 leading-relaxed">{desc}</p>
+    </div>
+  </div>
+);
