@@ -422,7 +422,10 @@ const Messages = () => {
   const loginUser = useSelector((state) => state.auth?.user) || null;
   const members = useSelector((state) => state.auth?.members) || [];
 
-  const getChatId = (id1, id2) => [id1, id2].sort().join("_");
+// Example helper
+const getChatId = (uid1, uid2) => {
+  return [uid1, uid2].sort().join("_"); 
+};
 
   const filteredMembers = useMemo(() => {
     return members.filter((m) => (m.name || "").toLowerCase().includes(searchTerm.toLowerCase()) && m.uid !== loginUser?.uid);
@@ -485,9 +488,8 @@ const Messages = () => {
     return activeCall.hostId === loginUser.uid || activeCall.participants?.includes(loginUser.uid);
   }, [activeCall, loginUser]);
 
-  // --- MESSAGING SYNC & READ RECEIPTS ---
   useEffect(() => {
-    if (!selectedUser || !loginUser) {
+    if (!selectedUser?.uid || !loginUser?.uid) {
       setMessages([]);
       return;
     }
@@ -498,30 +500,34 @@ const Messages = () => {
       orderBy("timestamp", "asc")
     );
     
-   const unsubscribe = onSnapshot(q, async (snap) => {
-  const msgs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-  setMessages(msgs);
-
-  // ✅ DIRECTLY UPDATE FROM SNAPSHOT (BEST WAY)
-  const unreadDocs = snap.docs.filter(
-    d =>
-      d.data().senderId === selectedUser.uid &&
-      d.data().status === "sent"
-  );
-
-  if (unreadDocs.length > 0) {
-    const batch = writeBatch(db);
-
-    unreadDocs.forEach((docItem) => {
-      batch.update(docItem.ref, { status: "read" });
-    });
-
-    await batch.commit();
-  }
-});
+    
+    const unsubscribe = onSnapshot(q, (snap) => {
+      // 1. Update UI immediately
+      const msgs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setMessages(msgs);
   
+      // 2. Filter unread messages sent by the OTHER person
+      const unreadDocs = snap.docs.filter(d => {
+        const data = d.data();
+        return data.senderId === selectedUser.uid && data.status !== "read";
+      });
+  
+      // 3. Update status in a single batch
+      if (unreadDocs.length > 0) {
+        const batch = writeBatch(db);
+        unreadDocs.forEach((docItem) => {
+          batch.update(docItem.ref, { status: "read" });
+        });
+        
+        // We don't 'await' here to keep the listener thread fast
+        batch.commit().catch(err => console.error("Failed to update read receipts:", err));
+      }
+    });
+    
     return () => unsubscribe();
-  }, [selectedUser, loginUser, markAsRead]);
+    // REMOVED 'markAsRead' from dependencies if it's a function defined inside the component 
+    // to prevent unnecessary re-subscriptions unless you use useCallback.
+  }, [selectedUser?.uid, loginUser?.uid]);
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
@@ -927,7 +933,7 @@ const MessageBubble = ({ msg, isMe, isSelectionMode, isSelected, onSelect, onLon
               <button onClick={(e)=>{e.stopPropagation(); onDelete(mid);}} className="w-full text-left px-4 py-2 text-[10px] font-black uppercase text-rose-500 hover:bg-rose-50">Delete</button>
             </div>
           )}
-          <div className={`p-4 rounded-2xl text-sm font-bold shadow-sm ${isMe ? "bg-slate-900 text-white rounded-tr-none" : "bg-white text-slate-700 border border-slate-100 rounded-tl-none"}`}>
+          <div className={`p-4 rounded-2xl text-sm font-bold shadow-sm ${isMe ? "bg-indigo-600 text-white rounded-tr-none" : "bg-white text-slate-700 border border-slate-100 rounded-tl-none"}`}>
             {msg.text}
             <div className={`flex items-center gap-1 mt-1.5 text-[9px] ${isMe ? "text-slate-400 justify-end" : "text-slate-400"}`}>
           

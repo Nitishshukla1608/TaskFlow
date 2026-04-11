@@ -56,8 +56,9 @@ export default function OrganizationDeployment() {
           {
             email: formData.orgEmail,
             company_name: formData.name,
-            tier: isFreeTrial ? "Trial" : currentPlan?.type || "Standard",
-            org_id: orgId
+            industry:formData.industry,
+            team_size:formData.teamSize,
+            address:formData.location
           },
           "RG-epL79tbuC7qcZI"
         );

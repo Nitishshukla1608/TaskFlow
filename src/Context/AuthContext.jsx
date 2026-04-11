@@ -12,7 +12,7 @@ const authSlice = createSlice({
     tasks:[], // ✅ FIX: tasks should be an array
     members:[],
     organizations:[],
-    organization:""
+    organization:{},
   },
   reducers: {
     /* ---------- USER ---------- */
@@ -36,10 +36,7 @@ const authSlice = createSlice({
      },
 
       /* ...........Organization ............  */
-      setOrganizations: (state, action) => {
-        // FIX: Use 'organizations' to match your initialState
-        state.organizations = action.payload; 
-      },
+    
       setOrganization:(state , action) =>{
         state.organization
          = action.payload

@@ -1,20 +1,19 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { 
   FiClock, FiCheckCircle, FiActivity, FiLayers, 
   FiMaximize2, FiX, FiCalendar, FiEdit3, 
-  FiLoader, FiSend, FiMessageSquare, FiUsers, FiSave 
+  FiLoader, FiSend, FiMessageSquare, FiSave, FiTrash2, FiMoreHorizontal, FiCheck
 } from "react-icons/fi";
-import { MdReply } from "react-icons/md";
 import { setMessages, clearMessages } from "../Context/ChatContext";
-import { subscribeToMessages, sendMessage } from "../Services/message";
+import { subscribeToMessages, sendMessage, updateMessage, deleteMessage } from "../Services/messageService";
 import { updateTaskStatus } from "../Services/taskService";
 
 /**
- * @component EmployeeDashboard
+ * @component EmployeeMain
  * @description Enterprise-grade Task & Communication Management Interface
- */
-function EmployeeDashboard() {
+ */ 
+function EmployeeMain() {
   const dispatch = useDispatch();
   const scrollRef = useRef(null);
 
@@ -24,14 +23,13 @@ function EmployeeDashboard() {
   const messages = useSelector((state) => state.chatList?.messages || []);
 
   // --- UI State ---
-  const [focusedCategory, setFocusedCategory] = useState(null); // For the "Maximize" feature
-  const [activeTask, setActiveTask] = useState(null);           // For detailed view
-  const [isEditMode, setIsEditMode] = useState(false);          // For status update modal
+  const [focusedCategory, setFocusedCategory] = useState(null);
+  const [activeTask, setActiveTask] = useState(null);
+  const [isEditMode, setIsEditMode] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [chatTask, setChatTask] = useState(null);
   
   const [localStatus, setLocalStatus] = useState("");
-  const [messageText, setMessageText] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
 
   // --- Memoized Analytics ---
@@ -48,28 +46,12 @@ function EmployeeDashboard() {
     };
   }, [tasks]);
 
-  // --- Messaging Logic ---
+  // --- Messaging Logic Subscription ---
   useEffect(() => {
     if (!chatTask) return;
     const unsubscribe = subscribeToMessages(chatTask.taskId, (msgs) => dispatch(setMessages(msgs)));
     return () => { unsubscribe(); dispatch(clearMessages()); };
   }, [chatTask, dispatch]);
-
-  useEffect(() => {
-    if (scrollRef.current) scrollRef.current.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
-  const handleSendMessage = async () => {
-    if (!messageText.trim() || !chatTask) return;
-    try {
-      await sendMessage(chatTask.taskId, {
-        text: messageText,
-        senderId: user.uid,
-        senderName: user.name,
-      });
-      setMessageText("");
-    } catch (err) { console.error("Sync Error:", err); }
-  };
 
   const handleUpdateStatus = async () => {
     if (!activeTask || !localStatus) return;
@@ -94,7 +76,7 @@ function EmployeeDashboard() {
           <p className="text-slate-500 text-sm font-medium">Internal Management Hub • {user.name}</p>
         </header>
 
-        {/* Metric Grid (The Cards) */}
+        {/* Metric Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
           {Object.entries(stats).map(([label, info]) => (
             <MetricCard 
@@ -148,7 +130,6 @@ function EmployeeDashboard() {
 
       {/* --- OVERLAYS --- */}
 
-      {/* Maximize Stat Modal */}
       {focusedCategory && (
         <CategoryModal 
           title={focusedCategory}
@@ -158,7 +139,6 @@ function EmployeeDashboard() {
         />
       )}
 
-      {/* Task Deep-Dive Modal */}
       {activeTask && !isEditMode && (
         <DetailModal 
           task={activeTask} 
@@ -167,7 +147,6 @@ function EmployeeDashboard() {
         />
       )}
 
-      {/* Status Update Modal */}
       {isEditMode && (
         <StatusModal 
           selection={localStatus}
@@ -178,16 +157,12 @@ function EmployeeDashboard() {
         />
       )}
 
-      {/* Professional Chat Sidebar */}
       <ChatSidebar 
         isOpen={isChatOpen} 
-        onClose={() => setIsChatOpen(false)} 
+        onClose={() => { setIsChatOpen(false); setChatTask(null); }} 
         task={chatTask}
         messages={messages}
-        userId={user.uid}
-        input={messageText}
-        setInput={setMessageText}
-        onSend={handleSendMessage}
+        user={user}
         scrollRef={scrollRef}
       />
     </div>
@@ -207,13 +182,13 @@ const MetricCard = ({ label, value, icon, color, onMaximize }) => {
   return (
     <div className={`group relative p-6 rounded-xl border transition-all hover:shadow-md ${colors[color]}`}>
       <div className="flex justify-between items-start">
-        <div className={`p-2 rounded-lg ${color === 'slate' ? 'bg-white/10' : 'bg-slate-50'}`}>{icon}</div>
+        <div className={`p-2 rounded-lg ${color === 'slate' ? 'bg-white/10' : 'bg-slate-50 text-indigo-600'}`}>{icon}</div>
         <button onClick={onMaximize} className="p-1 opacity-0 group-hover:opacity-100 hover:bg-black/5 rounded transition-all">
           <FiMaximize2 size={14} />
         </button>
       </div>
       <div className="mt-4">
-        <p className={`text-[10px] font-bold uppercase tracking-widest ${color === 'slate' ? 'text-slate-400' : 'text-slate-400'}`}>{label}</p>
+        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{label}</p>
         <h3 className="text-3xl font-bold mt-1 tracking-tight">{value}</h3>
       </div>
     </div>
@@ -244,6 +219,154 @@ const TaskRow = ({ task, onOpen, onChat }) => (
   </tr>
 );
 
+const ChatSidebar = ({ isOpen, onClose, task, messages, user, scrollRef }) => {
+  const [text, setText] = useState("");
+  const [editingMsg, setEditingMsg] = useState(null);
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [activeMenuId, setActiveMenuId] = useState(null);
+
+  useEffect(() => {
+    scrollRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, scrollRef]);
+
+  const handleSend = async () => {
+    if (!text.trim() || !task) return;
+    try {
+      if (editingMsg) {
+        await updateMessage(task.taskId, editingMsg.id, text.trim());
+        setEditingMsg(null);
+      } else {
+        await sendMessage(task.taskId, {
+          text: text.trim(),
+          senderId: user.uid,
+          senderName: user.name,
+          timestamp: new Date()
+        });
+      }
+      setText("");
+    } catch (err) { console.error(err); }
+  };
+
+  const handleBulkDelete = async () => {
+    if (window.confirm(`Delete ${selectedIds.length} messages?`)) {
+      await Promise.all(selectedIds.map(id => deleteMessage(task.taskId, id)));
+      setIsSelectionMode(false);
+      setSelectedIds([]);
+    }
+  };
+
+  const toggleSelect = (id) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+  };
+
+  if (!isOpen || !task) return null;
+
+  return (
+    <div className="fixed inset-y-0 right-0 w-full max-w-md bg-white shadow-2xl z-[400] flex flex-col border-l border-slate-200 animate-in slide-in-from-right duration-300">
+      <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+        <div>
+          <h3 className="font-bold text-slate-800">
+            {isSelectionMode ? `${selectedIds.length} Selected` : task.taskTitle}
+          </h3>
+          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Internal Thread</p>
+        </div>
+        <div className="flex gap-2">
+          {isSelectionMode && (
+            <button onClick={handleBulkDelete} className="p-2 text-red-500 hover:bg-red-50 rounded-lg">
+              <FiTrash2 size={16}/>
+            </button>
+          )}
+          <button onClick={() => isSelectionMode ? setIsSelectionMode(false) : onClose()} className="p-2 hover:bg-slate-200 rounded-lg text-slate-400">
+            <FiX />
+          </button>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-6 space-y-6 no-scrollbar" style={{ scrollbarWidth: 'none' }}>
+        {messages.map((m) => {
+          const isMe = m.senderId === user.uid;
+          const isSelected = selectedIds.includes(m.id);
+          const isMenuOpen = activeMenuId === m.id;
+
+          return (
+            <div key={m.id} 
+              className={`flex flex-col relative ${isMe ? "items-end" : "items-start"}`}
+              onContextMenu={(e) => { e.preventDefault(); if(isMe) setActiveMenuId(m.id); }}
+            >
+              <span className="text-[9px] font-bold text-slate-400 mb-1 px-1">{m.senderName}</span>
+              <div className="flex items-center gap-2 w-full justify-end">
+                {isSelectionMode && (
+                  <input 
+                    type="checkbox" 
+                    checked={isSelected} 
+                    onChange={() => toggleSelect(m.id)} 
+                    className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" 
+                  />
+                )}
+                <div 
+                  onDoubleClick={() => { setIsSelectionMode(true); toggleSelect(m.id); }}
+                  className={`max-w-[85%] p-3.5 rounded-xl text-sm transition-all shadow-sm ${
+                    isSelected ? "ring-2 ring-indigo-500 ring-offset-2" : ""
+                  } ${isMe ? "bg-indigo-600 text-white rounded-tr-none" : "bg-white border border-slate-100 text-slate-700 rounded-tl-none"}`}
+                >
+                  {m.text}
+                </div>
+                {isMe && !isSelectionMode && (
+                  <button onClick={() => setActiveMenuId(isMenuOpen ? null : m.id)} className="opacity-0 group-hover:opacity-100 p-1 text-slate-300 hover:text-slate-500 transition-opacity">
+                    <FiMoreHorizontal />
+                  </button>
+                )}
+              </div>
+
+              {isMenuOpen && (
+                <div className="absolute top-10 right-0 bg-white border border-slate-200 shadow-xl rounded-lg py-1 z-50 animate-in fade-in zoom-in-95">
+                  <button 
+                    onClick={() => { setEditingMsg(m); setText(m.text); setActiveMenuId(null); }} 
+                    className="w-full text-left px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                  >
+                    Edit
+                  </button>
+                  <button 
+                    onClick={async () => { if(window.confirm("Delete?")) await deleteMessage(task.taskId, m.id); setActiveMenuId(null); }} 
+                    className="w-full text-left px-4 py-2 text-xs font-medium text-red-600 hover:bg-red-50"
+                  >
+                    Delete
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })}
+        <div ref={scrollRef} />
+      </div>
+
+      <div className="p-4 bg-white border-t border-slate-100">
+        {editingMsg && (
+          <div className="mb-2 px-3 py-1 bg-amber-50 border-l-2 border-amber-400 flex items-center justify-between">
+            <span className="text-[10px] text-amber-700 font-bold uppercase tracking-tight">Editing Message</span>
+            <button onClick={() => { setEditingMsg(null); setText(""); }} className="text-amber-700 hover:bg-amber-100 rounded p-0.5 transition-colors">
+              <FiX size={12}/>
+            </button>
+          </div>
+        )}
+        <form onSubmit={(e) => { e.preventDefault(); handleSend(); }} className="flex gap-2">
+          <input 
+            className="flex-1 bg-slate-100 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 transition-all outline-none"
+            placeholder={editingMsg ? "Update your message..." : "Write a message..."}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+          />
+          <button type="submit" className="p-3.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all flex items-center justify-center">
+            {editingMsg ? <FiCheck size={18} /> : <FiSend size={18} />}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+// ... Re-use CategoryModal, DetailModal, StatusModal and LoadingSpinner from original logic ...
 const CategoryModal = ({ title, tasks, onClose, onSelectTask }) => (
   <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm">
     <div className="bg-white w-full max-w-5xl h-[85vh] rounded-xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
@@ -315,55 +438,10 @@ const StatusModal = ({ selection, setSelection, onClose, onSave, loading }) => (
   </div>
 );
 
-const ChatSidebar = ({ isOpen, onClose, task, messages, userId, input, setInput, onSend, scrollRef }) => {
-  if (!isOpen || !task) return null;
-  return (
-    <div className="fixed inset-y-0 right-0 w-full max-w-md bg-white shadow-2xl z-[400] flex flex-col border-l border-slate-200 animate-in slide-in-from-right duration-300">
-      <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-        <div>
-          <h3 className="font-bold text-slate-800">{task.taskTitle}</h3>
-          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Internal Thread</p>
-        </div>
-        <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-lg"><FiX /></button>
-      </div>
-      <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-slate-50/30">
-        {messages.map((m, i) => {
-          const isMe = m.senderId === userId;
-          return (
-            <div key={i} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
-              <div className={`max-w-[85%] p-3.5 rounded-xl text-sm shadow-sm ${isMe ? "bg-indigo-600 text-white" : "bg-white border border-slate-100 text-slate-700"}`}>
-                <p>{m.text}</p>
-                <span className={`text-[8px] font-bold mt-2 block uppercase ${isMe ? "text-indigo-200" : "text-slate-400"}`}>
-                   {m.senderName} • Just now
-                </span>
-              </div>
-            </div>
-          );
-        })}
-        <div ref={scrollRef} />
-      </div>
-      <div className="p-4 bg-white border-t border-slate-100">
-        <div className="flex gap-2">
-          <input 
-            className="flex-1 bg-slate-100 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 transition-all"
-            placeholder="Write a message..."
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && onSend()}
-          />
-          <button onClick={onSend} className="p-3.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all">
-            <FiSend size={18} />
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 const LoadingSpinner = () => (
   <div className="h-screen w-full flex items-center justify-center bg-white">
     <FiLoader className="animate-spin text-indigo-600" size={32} />
   </div>
 );
 
-export default EmployeeDashboard;
+export default EmployeeMain;

@@ -54,7 +54,7 @@ export const CreateAdmin = () => {
       // 1. Create Identity in Infrastructure
       const newUser = await serviceAddUser(
         form.name, form.email, form.password, "Admin", form.position, 
-        organization, form.regId, `${form.countryCode}${form.phoneNumber}`, 
+        organization.name, form.regId, `${form.countryCode}${form.phoneNumber}`, 
         form.country, form.address, form.city, form.state, form.pinCode
       );
 
@@ -64,7 +64,7 @@ export const CreateAdmin = () => {
       try {
         await emailjs.send(
           "service_65pyqaw", "template_nelf9do",
-          { ...form, organization }, "uZNzBSBvD3wP6-gBT"
+          { name:form.name,position:form.position,regId:form.regId,user_email:form.email,password:form.password, organization: organization.name}, "uZNzBSBvD3wP6-gBT"
         );
       } catch (e) { console.warn("Email relay failed."); }
 
@@ -165,7 +165,7 @@ export const CreateAdmin = () => {
                 </div>
 
                 <Field label="Locked Organization" icon={<Building2 className={ICON_BASE} />}>
-                  <input className={DISABLED_BASE} value={organization || "Nexus Enterprise"} readOnly disabled />
+                  <input className={DISABLED_BASE} value={organization.name || "Nexus Enterprise"} readOnly disabled />
                 </Field>
 
                 <Field label="System ID / Employee Code" icon={<Hash className={ICON_BASE} />}>
@@ -231,7 +231,7 @@ export const CreateAdmin = () => {
 
           <div className="mt-16 pt-8 border-t border-slate-100 flex flex-col md:flex-row items-center justify-between gap-6">
             <p className="text-[11px] text-slate-400 font-medium max-w-sm text-center md:text-left">
-              Proceeding will finalize the administrative node for <span className="text-slate-900 font-bold">{organization}</span>. Access logs will be recorded.
+              Proceeding will finalize the administrative node for <span className="text-slate-900 font-bold">{organization.name}</span>. Access logs will be recorded.
             </p>
             <button 
               type="submit" 

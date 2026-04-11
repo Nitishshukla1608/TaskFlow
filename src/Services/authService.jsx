@@ -150,28 +150,8 @@ export const editPassword = async (newPassword) => {
     throw error;
   }
 };
-/* =========================
-   TASK & ORG FUNCTIONS
-========================= */
 
-export const addTask = async (newTask) => {
-  try {
-    const taskId = `TASK_${Date.now()}`;
-    const docRef = doc(db, "tasks", taskId);
 
-    await setDoc(docRef, {
-      ...newTask,
-      taskId,
-      createdAt: serverTimestamp(),
-      status: newTask.status || "Pending",
-    });
-
-    return taskId;
-  } catch (error) {
-    console.error("Error in adding Task:", error);
-    throw error;
-  }
-};
 
 /**
  * Adds a new organization to Firestore.
@@ -180,20 +160,19 @@ export const addTask = async (newTask) => {
  */
 export const addOrganization = async (organization, planData = null, isFreeTrial = false) => {
   try {
-    // 1. Generate unique ID
+    // 1. Generate unique ID for the public entry
     const entropy = Math.random().toString(36).substring(2, 7).toUpperCase();
-    const orgId = `ORG_${Date.now()}_${entropy}`;
+    const orgId = `ORG_UNAUTH_${Date.now()}_${entropy}`;
     const docRef = doc(db, "organization", orgId);
 
-    // 2. Structure data with subscription metadata (Standard SaaS practice)
+    // 2. Structure data (Notice: createdBy is now 'public_onboarding')
     const orgData = {
       ...organization,
       orgId,
-      status: "active",
+      status: "pending_verification", // Pro-tip: mark as pending since it's unauthenticated
       createdAt: serverTimestamp(),
-      createdBy: auth.currentUser?.uid || "system",
+      createdBy: auth.currentUser?.uid || "public_onboarding",
       
-      // Metadata for scaling
       subscription: {
         tier: isFreeTrial ? "trial" : (planData?.type || "standard"),
         isTrialActive: isFreeTrial,
@@ -207,25 +186,16 @@ export const addOrganization = async (organization, planData = null, isFreeTrial
       }
     };
 
-    // 3. Execution
+    // 3. Execution (This will now pass even without a login)
     await setDoc(docRef, orgData);
 
-    // 4. Return the ID AND the data 
-    // This allows your UI to update Redux/Context without triggering a new 'get' request
     return { orgId, orgData };
     
   } catch (error) {
-    // LOGGING: In a commercial app, use a service like Sentry here
     console.error("Infrastructure Deployment Failed:", error.code, error.message);
-    
-    // Friendly error for the UI
-    if (error.code === 'permission-denied') {
-      throw new Error("Security Policy Violation: You do not have permission to provision new organizations.");
-    }
-    throw error;
+    throw new Error("System was unable to provision the organization. Please check your connection.");
   }
 };
-
 
 
 export const checkIfEmailExists = async (email) => {
@@ -329,24 +299,33 @@ export const listenToTeam = (organizationName, callback) => {
 
 export const observeAuthState = (callback) => {
   return onAuthStateChanged(auth, async (user) => {
-    if (user) {
+    if (user?.uid) {
       try {
-        const userDoc = await getDoc(doc(db, "users", user.uid));
-        if (userDoc.exists()) {
-          const userData = userDoc.data();
-          callback({
-            uid: user.uid,
-            ...userData,
-            lastModified: userData.lastModified?.toMillis?.() || null,
-            createdAt: userData.createdAt?.toMillis?.() || null,
-          });
-        } else {
-          // Auth user exists but Firestore doc hasn't been created yet
-          callback({ uid: user.uid, email: user.email, partial: true });
-        }
+        const userRef = doc(db, "users", user.uid);
+        
+        // Use a snapshot listener instead of getDoc for the auth state 
+        // to handle the delay between Auth creation and Firestore creation
+        const unsubscribe = onSnapshot(userRef, (userDoc) => {
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            callback({
+              uid: user.uid,
+              ...userData,
+              lastModified: userData.lastModified?.toMillis?.() || null,
+              createdAt: userData.createdAt?.toMillis?.() || null,
+            });
+          } else {
+            // Document doesn't exist yet, but Auth does
+            callback({ uid: user.uid, email: user.email, isNewUser: true });
+          }
+        }, (err) => {
+          console.error("Internal User Listener Error:", err);
+          callback({ uid: user.uid, email: user.email, error: "Access Denied" });
+        });
+
+        return unsubscribe;
       } catch (err) {
-        console.error("Error fetching user profile:", err);
-        callback(null);
+        callback({ uid: user.uid, email: user.email, error: "Initialization Failed" });
       }
     } else {
       callback(null);
@@ -355,5 +334,3 @@ export const observeAuthState = (callback) => {
 };
 
 
-
-// Chat methods have been moved to message.jsx to avoid redundancy.
