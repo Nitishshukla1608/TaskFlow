@@ -3,7 +3,7 @@ import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import emailjs from '@emailjs/browser';
 import { 
-  FiSend, FiSearch, FiMoreHorizontal, FiUser, FiChevronLeft, 
+  FiSend, FiSearch, FiMoreHorizontal, FiUser, FiChevronLeft, FiInfo,
   FiPlus, FiTrash2, FiUsers ,FiX, FiVideo, FiPhoneCall, FiMail, FiCheck, FiClock 
 } from "react-icons/fi"; 
 import { db } from "../../../firebase"; 
@@ -608,47 +608,74 @@ const getChatId = (uid1, uid2) => {
   };
 
   const handleBulkBroadcast = async (details, selectedUsers) => {
+    if (!details.title || !details.description) {
+      alert("Title and Description required");
+      return;
+    }
+  
     const serviceID = 'service_qqkfdee';
     const templateID = 'template_o5f36ch';
     const publicKey = 'A4ovkNHhyqVBb6k6k';
+  
     try {
-      const broadcastPromises = selectedUsers.map(async (u) => {
-        const templateParams = {
-          description: details.description,
-          title: details.title,
-          to_name: u.name,
-          to_email: u.email,
-          from_name: loginUser.name,
-          from_email: loginUser.email,
-        };
-        const chatId = getChatId(loginUser.uid, u.uid);
-        try {
+      // 1️⃣ SAVE TO FIRESTORE
+      await Promise.all(
+        selectedUsers.map(async (u) => {
+          const chatId = getChatId(loginUser.uid, u.uid);
           const messagesRef = collection(db, "direct_messages", chatId, "messages");
-          await Promise.all([
-            addDoc(messagesRef, {
-              text: details.title,
-              tempMessage: true,
-              senderId: loginUser.uid,
-              timestamp: serverTimestamp(),
-              status: "sent"
-            }),
-            setDoc(doc(db, "direct_messages", chatId), {
+  
+          await addDoc(messagesRef, {
+            text: details.title,
+            description: details.description,
+            tempMessage: true,
+            senderId: loginUser.uid,
+            timestamp: serverTimestamp(),
+            status: "sent"
+          });
+  
+          await setDoc(
+            doc(db, "direct_messages", chatId),
+            {
               lastMessage: details.title,
               updatedAt: serverTimestamp()
-            }, { merge: true })
-          ]);
-        } catch (dbError) {
-          console.error(`Database log failed for ${u.name}:`, dbError);
-        }
-        return emailjs.send(serviceID, templateID, templateParams, publicKey);
-      });
-      await Promise.all(broadcastPromises);
-      alert("Broadcast and messages sent successfully!");
+            },
+            { merge: true }
+          );
+        })
+      );
+  
+      // 2️⃣ SEND EMAILS (using allSettled so one fail doesn't stop the rest)
+      const emailResults = await Promise.allSettled(
+        selectedUsers.map((u) => {
+          const templateParams = {
+            description: details.description,
+            title: details.title,
+            to_name: u.name,
+            organization: loginUser.organization || "N/A",
+            to_email: u.email,
+            from_name: loginUser.name,
+            from_email: loginUser.email,
+          };
+          return emailjs.send(serviceID, templateID, templateParams, publicKey);
+        })
+      );
+  
+      // 3️⃣ ANALYZE RESULTS
+      const failures = emailResults.filter(r => r.status === 'rejected');
+      
+      if (failures.length > 0) {
+        console.warn("Some emails failed to send:", failures);
+        alert(`Messages saved to chat, but ${failures.length} emails failed to reach users.`);
+      } else {
+        alert("All broadcast messages and emails sent successfully!");
+      }
+  
       setBulkMessageSelectorOpen(false);
       setBulkMessageModalOpen(false);
+  
     } catch (err) {
-      console.error("Bulk Broadcast Error:", err);
-      alert("Failed to complete the broadcast.");
+      console.error("Critical Broadcast Error:", err);
+      alert("Failed to process the broadcast. Check console for details.");
     }
   };
 
@@ -815,7 +842,7 @@ const getChatId = (uid1, uid2) => {
                       </h4>
                       {!isSelectionMode && (
                         <span className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.1em]">
-                          {selectedUser.role} Account
+                          {selectedUser.uid.slice(0,10)} 
                         </span>
                       )}
                   </div>
@@ -934,7 +961,8 @@ const MessageBubble = ({ msg, isMe, isSelectionMode, isSelected, onSelect, onLon
             </div>
           )}
           <div className={`p-4 rounded-2xl text-sm font-bold shadow-sm ${isMe ? "bg-indigo-600 text-white rounded-tr-none" : "bg-white text-slate-700 border border-slate-100 rounded-tl-none"}`}>
-            {msg.text}
+          <p className={`font-bold ${msg.description && "text-red-600"}`}>{msg.text}</p>
+          {msg.description && <p>{msg.description}</p>}
             <div className={`flex items-center gap-1 mt-1.5 text-[9px] ${isMe ? "text-slate-400 justify-end" : "text-slate-400"}`}>
           
               {msg.timestamp ? new Date(msg.timestamp?.seconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "..."}
