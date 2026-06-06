@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import emailjs from "@emailjs/browser";
 import { ChevronLeft, ShieldCheck, Mail, Key, Lock, Loader2, AlertCircle } from "lucide-react";
@@ -34,10 +34,18 @@ function ForgotPass() {
     return () => clearInterval(interval);
   }, [isActive, timer]);
 
+  // AUTO-VERIFY when 6 digits are entered
+  useEffect(() => {
+    if (otp.length === 6 && step === 2) {
+      verifyIdentity();
+    }
+  }, [otp]);
+
   const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
 
   const initiateRecovery = async () => {
     setError("");
+    console.log(emailInput);
     if (!emailInput) return setError("Registered email is required.");
     if (!accepted) return setError("Please acknowledge the security protocol.");
 
@@ -46,7 +54,6 @@ function ForgotPass() {
       const res = await checkIfEmailExists(emailInput);
       if (!res.exists) {
         setError("This identity is not recognized in our database.");
-        setLoading(false);
         return;
       }
 
@@ -72,24 +79,30 @@ function ForgotPass() {
 
   const verifyIdentity = () => {
     setError("");
-    if (timer === 0) return setError("Security code has expired.");
+    if (!otp) return setError("Please enter the verification code.");
+    if (timer === 0) return setError("Security code has expired. Request a new one.");
     if (otp !== serverOTP) return setError("Invalid verification code.");
+    
     setStep(3);
   };
 
   const finalizeUpdate = async () => {
     setError("");
-    const passwordRegex = /^(?=.*[A-Z])(?=.*[!@#$%^&*])[A-Za-z\d!@#$%^&*]{8,12}$/;
+    // 8-12 chars, 1 Uppercase, 1 Special character
+    const passwordRegex = /^(?=.*[A-Z])(?=.*[!@#$%^&*])[A-Za-z\d!@#$%^&*]{8,14}$/;
 
     if (!passwordRegex.test(newPassword)) {
-      return setError("Policy: 8-12 chars, 1 Uppercase, 1 Special char.");
+      return setError("Policy: 8-14 chars, 1 Uppercase, 1 Special char.");
     }
 
     setLoading(true);
     try {
+      // NOTE: Ensure your editPassword service handles the Firebase Auth password update
+      // and updates the Firestore user document simultaneously.
       await editPassword(emailInput, newPassword);
-      // Optional: Send success email here
-      navigate("/login");
+      
+      // Navigate to login on success
+      navigate("/login", { state: { message: "Credentials updated. Please sign in." } });
     } catch (err) {
       setError(err.message || "Failed to sync new credentials.");
     } finally {
@@ -125,7 +138,7 @@ function ForgotPass() {
 
         {/* STEP 1: IDENTITY CHALLENGE */}
         {step === 1 && (
-          <div className="space-y-6">
+          <div className="space-y-6 animate-in fade-in duration-300">
             <div className="relative">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1.5 block">Identity Verification</label>
               <Mail className="absolute left-4 top-[38px] text-indigo-500 w-4 h-4 z-10" />
@@ -159,7 +172,7 @@ function ForgotPass() {
 
         {/* STEP 2: TOKEN VERIFICATION */}
         {step === 2 && (
-          <div className="space-y-6">
+          <div className="space-y-6 animate-in fade-in duration-300">
             <div className="text-center">
               <p className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-4">Enter 6-Digit Security Token</p>
               <div className="relative">
@@ -171,6 +184,7 @@ function ForgotPass() {
                   value={otp}
                   onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
                   className={`${INPUT_STYLE} text-center text-2xl tracking-[0.5em] font-black`}
+                  autoFocus
                 />
               </div>
             </div>
@@ -184,9 +198,9 @@ function ForgotPass() {
                 {isActive ? `Token Expires: ${Math.floor(timer / 60)}:${(timer % 60).toString().padStart(2, '0')}` : "Token Expired"}
               </span>
               <button
-                disabled={isActive}
+                disabled={isActive || loading}
                 onClick={initiateRecovery}
-                className={`text-[10px] font-black uppercase tracking-widest ${isActive ? "text-slate-200" : "text-indigo-600 underline"}`}
+                className={`text-[10px] font-black uppercase tracking-widest ${isActive ? "text-slate-200" : "text-indigo-600 underline hover:text-indigo-800"}`}
               >
                 Resend Token
               </button>
@@ -196,7 +210,7 @@ function ForgotPass() {
 
         {/* STEP 3: CREDENTIAL UPDATE */}
         {step === 3 && (
-          <div className="space-y-6">
+          <div className="space-y-6 animate-in fade-in duration-300">
             <div className="relative">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1.5 block">New Security Key</label>
               <Lock className="absolute left-4 top-[38px] text-indigo-500 w-4 h-4 z-10" />
@@ -206,6 +220,7 @@ function ForgotPass() {
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 className={INPUT_STYLE}
+                autoFocus
               />
             </div>
 
@@ -218,7 +233,7 @@ function ForgotPass() {
             </button>
             
             <p className="text-[10px] text-slate-400 text-center font-medium italic">
-              Updating your password will terminate all other active sessions for this account.
+              Updating your password will secure your account. You will need to log in with your new credentials on all devices.
             </p>
           </div>
         )}

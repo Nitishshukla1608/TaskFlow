@@ -22,77 +22,82 @@ import {
   orderBy
 } from "firebase/firestore";
 
+
 /* =========================
    AUTH / USER FUNCTIONS
 ========================= */
 
+
+
 export const addUser = async (
-  name,
-  email,
-  password,
-  role,
-  position,
-  organization,
-  regId,
-  phone,
-  country,
-  address,
-  city,
-  state,
-  pinCode
+  name, email, password, role, position, organization, 
+  regId, phone, country, address, city, state, pinCode, orgId
 ) => {
   try {
-    // 1️⃣ Determine which auth instance to use.
-    // If we are creating an Admin and no one is logged in, this is the FIRST Admin.
-    // We MUST use the main 'auth' instance so they are signed in for the Firestore write.
-    const isInitialAdmin = role === "Admin" && !auth.currentUser;
-    const authToUse = isInitialAdmin ? auth : secondaryAuth;
-
-    // 2️⃣ Create the user
+    // 1️⃣ Create the user using the SECONDARY instance
+    // This ensures the Admin (on the primary instance) is NOT logged out.
     const userCredential = await createUserWithEmailAndPassword(
-      authToUse,
+      secondaryAuth,
       email,
       password
     );
+    
     const newUser = userCredential.user;
 
-    // 3️⃣ Prepare the document data
+    // 2️⃣ Prepare the Firestore document
     const userData = {
-      password: password || "",
       uid: newUser.uid,
-      email: email || "",
-      name: name || "",
+      email: email.toLowerCase().trim(),
+      name: name.trim(),
       role: role || "Employee",
       position: position || "",
-      phone: phone || "",
       organization: organization || "",
+      orgId: orgId || "", 
       regId: regId || "",
+      phone: phone || "",
+      country: country || "",
       address: address || "",
       city: city || "",
       state: state || "",
       pinCode: pinCode || "",
-      country: country || "",
       createdAt: serverTimestamp(),
-      isPasswordChangable: true,
+      isPasswordChangeable: true,
+      status: "Active",
+   
     };
 
-    // 4️⃣ Write to Firestore
-    // If isInitialAdmin is true, the user is now signed into 'auth'.
-    // If isInitialAdmin is false, the Admin is still signed into 'auth'.
+    // 3️⃣ Write to Firestore using the ADMIN's permissions
+    // Since the Admin is still logged into the primary 'auth', 
+    // the setDoc call will succeed based on Admin rules.
     const userDocRef = doc(db, "users", newUser.uid);
     await setDoc(userDocRef, userData);
 
-    // 5️⃣ Cleanup secondary instance if used
-    if (authToUse === secondaryAuth) {
-      await signOut(secondaryAuth);
-    }
+    // 4️⃣ CRITICAL: Sign out the new user from the secondary instance
+    // This clears the "tunnel" for the next user creation.
+    await signOut(secondaryAuth);
 
-    return {
-      ...userData,
-      createdAt: Date.now(),
-    };
+    return { success: true, uid: newUser.uid };
+    
   } catch (error) {
-    console.error("Error in addUser service:", error.code, error.message);
+    console.error("Provisioning Error:", error.code);
+    
+    // Map Firebase errors to user-friendly messages
+    if (error.code === 'auth/email-already-in-use') {
+      throw new Error("This email is already registered.");
+    }
+    throw new Error("Failed to provision account. Please check network.");
+  }
+};
+export const updateOrganization = async (orgId, data) => {
+  try {
+    const docRef = doc(db, "organization", orgId);
+    await updateDoc(docRef, {
+      ...data,
+      lastModified: serverTimestamp(),
+    });
+    return { success: true };
+  } catch (error) {
+    console.error("Error updating organization:", error);
     throw error;
   }
 };
@@ -132,6 +137,7 @@ export const editUser = async (collectionName, uid, data) => {
 };
 
 
+
 export const editPassword = async (newPassword) => {
   try {
     const user = auth.currentUser;
@@ -140,16 +146,21 @@ export const editPassword = async (newPassword) => {
       throw new Error("User not logged in");
     }
 
-    // 🔐 1. Update Firebase Auth (MAIN)
     await updatePassword(user, newPassword);
 
+    return { success: true, message: "Password updated successfully." };
 
-    return { success: true };
   } catch (error) {
-    console.log("Error updating Password:", error);
+    console.error("Security Service Error:", error);
+
+    if (error.code === "auth/requires-recent-login") {
+      throw new Error("Please re-login and try again.");
+    }
+
     throw error;
   }
 };
+
 
 
 
@@ -298,14 +309,20 @@ export const listenToTeam = (organizationName, callback) => {
 };
 
 export const observeAuthState = (callback) => {
-  return onAuthStateChanged(auth, async (user) => {
+  let internalUnsubscribe = null;
+
+  const authUnsubscribe = onAuthStateChanged(auth, async (user) => {
+    // 1. Always clean up existing Firestore listener on any auth change
+    if (internalUnsubscribe) {
+      internalUnsubscribe();
+      internalUnsubscribe = null;
+    }
+
     if (user?.uid) {
       try {
         const userRef = doc(db, "users", user.uid);
         
-        // Use a snapshot listener instead of getDoc for the auth state 
-        // to handle the delay between Auth creation and Firestore creation
-        const unsubscribe = onSnapshot(userRef, (userDoc) => {
+        internalUnsubscribe = onSnapshot(userRef, (userDoc) => {
           if (userDoc.exists()) {
             const userData = userDoc.data();
             callback({
@@ -315,15 +332,15 @@ export const observeAuthState = (callback) => {
               createdAt: userData.createdAt?.toMillis?.() || null,
             });
           } else {
-            // Document doesn't exist yet, but Auth does
             callback({ uid: user.uid, email: user.email, isNewUser: true });
           }
         }, (err) => {
-          console.error("Internal User Listener Error:", err);
-          callback({ uid: user.uid, email: user.email, error: "Access Denied" });
+          // Only log error if we're still supposed to be logged in
+          if (auth.currentUser) {
+            console.error("Internal User Listener Error:", err);
+            callback({ uid: user.uid, email: user.email, error: "Access Denied" });
+          }
         });
-
-        return unsubscribe;
       } catch (err) {
         callback({ uid: user.uid, email: user.email, error: "Initialization Failed" });
       }
@@ -331,6 +348,12 @@ export const observeAuthState = (callback) => {
       callback(null);
     }
   });
+
+  // Return a master unsubscribe that kills both Auth and Firestore listeners
+  return () => {
+    if (internalUnsubscribe) internalUnsubscribe();
+    authUnsubscribe();
+  };
 };
 
 

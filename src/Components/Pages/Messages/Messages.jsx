@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import emailjs from '@emailjs/browser';
 import { 
   FiSend, FiSearch, FiMoreHorizontal, FiUser, FiChevronLeft, FiInfo,
-  FiPlus, FiTrash2, FiUsers ,FiX, FiVideo, FiPhoneCall, FiMail, FiCheck, FiClock 
+  FiPlus, FiTrash2,FiLink,FiLock , FiUsers ,FiX, FiVideo, FiPhoneCall, FiMail, FiCheck, FiClock 
 } from "react-icons/fi"; 
 import { db } from "../../../firebase"; 
 import { 
@@ -587,6 +587,7 @@ const getChatId = (uid1, uid2) => {
     try {
       const emailPromises = selectedUsers.map(u => {
         const templateParams = {
+          
           to_name: u.name,
           to_email: u.email,
           from_name: loginUser.name,

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { 
   FiBell, 
-  FiMessageSquare, 
+  FiMessageSquare, FiCalendar ,
   FiUser, 
   FiSearch,
   FiCommand,
@@ -80,6 +80,11 @@ const Header = () => {
           
           {/* Utility Buttons */}
           <div className="flex items-center border-r border-slate-200 pr-4 mr-2 gap-1">
+       {userRole == "Admin" &&    <div className="flex items-center gap-3">
+          <div className="hidden md:flex items-center px-4 py-2 bg-slate-100 rounded-xl text-[12px] font-bold text-slate-500 border border-slate-200/50">
+            <FiCalendar className="mr-2" /> {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+          </div>
+        </div>}
             <button className="p-2 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors relative" title="Help">
               <FiHelpCircle size={18} />
             </button>

@@ -22,7 +22,10 @@ const authSlice = createSlice({
 
     logout: (state) => {
       state.user = null;
-      state.tasks = []; // ✅ clear tasks on logout
+      state.tasks = [];
+      state.members = [];
+      state.organizations = [];
+      state.organization = {};
     },
 
     /* ---------- TASKS ---------- */

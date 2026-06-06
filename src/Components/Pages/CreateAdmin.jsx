@@ -23,6 +23,14 @@ export const CreateAdmin = () => {
   // Organization context from Redux (Set in previous step)
   const organization = useSelector((state) => state.auth.organization);
 
+  // 🛡️ Guard: If organization context is missing (e.g. on refresh), redirect back
+  React.useEffect(() => {
+    if (!organization || !organization.name) {
+      console.warn("Organization context missing. Redirecting to registration.");
+      navigate("/register-org");
+    }
+  }, [organization, navigate]);
+
   /* --- State Orchestration --- */
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -40,9 +48,9 @@ export const CreateAdmin = () => {
     setError("");
 
     // 🔐 Security Validation
-    const passRegex = /^(?=.*[A-Z])(?=.*[!@#$%^&*])[A-Za-z\d!@#$%^&*]{8,12}$/;
+    const passRegex = /^(?=.*[A-Z])(?=.*[!@#$%^&*])[A-Za-z\d!@#$%^&*]{8,14}$/;
     if (!passRegex.test(form.password)) {
-      return setError("Security Policy: Password must be 8-12 chars with 1 Uppercase & 1 Special char.");
+      return setError("Security Policy: Password must be 8-14 chars with 1 Uppercase & 1 Special char.");
     }
     if (form.password !== form.confirmPassword) {
       return setError("Validation Error: Passwords do not match.");
@@ -55,7 +63,8 @@ export const CreateAdmin = () => {
       const newUser = await serviceAddUser(
         form.name, form.email, form.password, "Admin", form.position, 
         organization.name, form.regId, `${form.countryCode}${form.phoneNumber}`, 
-        form.country, form.address, form.city, form.state, form.pinCode
+        form.country, form.address, form.city, form.state, form.pinCode,
+        organization.id // Pass the orgId here
       );
 
       dispatch(setUser(newUser));
@@ -228,7 +237,7 @@ export const CreateAdmin = () => {
               </div>
             </div>
           </div>
-
+          
           <div className="mt-16 pt-8 border-t border-slate-100 flex flex-col md:flex-row items-center justify-between gap-6">
             <p className="text-[11px] text-slate-400 font-medium max-w-sm text-center md:text-left">
               Proceeding will finalize the administrative node for <span className="text-slate-900 font-bold">{organization.name}</span>. Access logs will be recorded.

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import { observeAuthState } from "./Services/authService";
-import { setUser } from "./Context/AuthContext";
+import { setUser, logout } from "./Context/AuthContext";
 import { Analytics } from "@vercel/analytics/react";
 
 // Firebase imports
@@ -23,24 +23,31 @@ function App() {
   const user = useSelector((state) => state.auth.user);
   const [isInitializing, setIsInitializing] = useState(true);
 
+
+  const isUserAuthenticated = !!user?.uid && !user.isNewUser;
+
   // --- 1. AUTH STATE OBSERVER ---
   useEffect(() => {
+    // We listen to auth changes once on mount
     const unsubscribe = observeAuthState((userData) => {
       if (userData) {
         dispatch(setUser(userData));
       } else {
-        dispatch(setUser(null));
+        dispatch(logout());
       }
       setIsInitializing(false);
     });
-    return () => unsubscribe();
+
+    return () => {
+      if (typeof unsubscribe === 'function') unsubscribe();
+    };
   }, [dispatch]);
 
   // --- 2. REAL-TIME CALL LISTENER ---
   useEffect(() => {
-    if (!user) return;
+    // Only listen if user is FULLY authenticated and profile data (like role) is present
+    if (!isUserAuthenticated || !user?.role) return;
 
-    // Sirf wahi calls suno jo 'active' hain aur jisme user participant hai
     const q = query(
       collection(db, "activeCalls"), 
       where("status", "==", "active"),
@@ -49,68 +56,96 @@ function App() {
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       snapshot.docChanges().forEach((change) => {
+        // Only trigger on NEW incoming calls
         if (change.type === "added") {
           const callData = change.doc.data();
           
-          // Double check status as per business logic
           if (callData.status === "active") {
-            const join = window.confirm(`${callData.hostName} is inviting you to a video call. Join?`);
+            const join = window.confirm(`${callData.hostName || "Someone"} is inviting you to a video call. Join?`);
             if (join) {
               navigate(`/video-call/${callData.channelId}`);
             }
           }
         }
       });
+    }, (error) => {
+      console.error("Call Listener Error:", error);
     });
 
     return () => unsubscribe();
-  }, [user, navigate]);
+  }, [isUserAuthenticated, user?.uid, navigate]);
 
-  // Loading Screen
+  // --- 3. INITIALIZING LOADER ---
   if (isInitializing) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-indigo-600"></div>
-        <p className="ml-3 font-bold text-slate-500 italic uppercase tracking-widest text-[10px]">Syncing Workspace...</p>
+        <p className="ml-3 font-bold text-slate-500 italic uppercase tracking-widest text-[10px]">
+          Syncing Workspace...
+        </p>
       </div>
     );
   }
 
+  // Helper to determine the user's current status
+  const isAuthenticated = !!user?.uid;
+  const hasProfile = isAuthenticated && !user.isNewUser;
+
   return (
     <>
       <Routes>
+        {/* Primary Entry Point: Root becomes the Login page if not authenticated */}
         <Route
-          path="/login"
-          element={!user ? <Login /> : <Navigate to="/DashboardWrapper" />}
+          path="/"
+          element={
+            hasProfile ? (
+              <Navigate to="/DashboardWrapper" replace />
+            ) : (
+              <Login />
+            )
+          }
         />
+
+        {/* Redirect /login to / to maintain a single entry point */}
+        <Route path="/login" element={<Navigate to="/" replace />} />
+
         <Route
           path="/forgot-password"
-          element={!user ? <ForgotPass /> : <Navigate to="/DashboardWrapper" />}
+          element={!isAuthenticated ? <ForgotPass /> : <Navigate to="/" replace />}
         />
         <Route
           path="/register-org"
-          element={!user ? <CRA_org /> : <Navigate to="/DashboardWrapper" />}
+          element={
+            hasProfile ? (
+              <Navigate to="/DashboardWrapper" replace />
+            ) : (
+              <CRA_org />
+            )
+          }
         />
         <Route
           path="/createdmin"
-          element={!user ? <CreateAdmin /> : <Navigate to="/DashboardWrapper" />}
+          element={
+            hasProfile ? (
+              <Navigate to="/DashboardWrapper" replace />
+            ) : (
+              <CreateAdmin />
+            )
+          }
         />
+
+        {/* Protected Routes */}
         <Route
           path="/DashboardWrapper/*"
-          element={user ? <DashboardWrapper /> : <Navigate to="/login" />}
+          element={hasProfile ? <DashboardWrapper /> : <Navigate to="/" replace />}
         />
         <Route
           path="/video-call/:channelId"
-          element={user ? <VideoCallPage /> : <Navigate to="/login" />}
+          element={hasProfile ? <VideoCallPage /> : <Navigate to="/" replace />}
         />
-        <Route
-          path="/"
-          element={<Navigate to={user ? "/DashboardWrapper" : "/login"} />}
-        />
-        <Route
-          path="*"
-          element={<Navigate to={user ? "/DashboardWrapper" : "/login"} />}
-        />
+
+        {/* Fallback Redirection */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <Analytics />
     </>

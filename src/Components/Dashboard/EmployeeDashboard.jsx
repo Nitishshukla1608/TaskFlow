@@ -52,8 +52,8 @@ function EmployeeDashboard() {
       LISTEN TO ORGANIZATION DETAILS
   ========================= */
   useEffect(() => {
-    // 🛑 Wait for organization ID from the profile
-    const orgId = typeof authUser?.organization === 'object' ? authUser.organization.id : authUser?.organization;
+    // 🛑 Use direct orgId from profile if available, otherwise fallback
+    const orgId = authUser?.orgId || (typeof authUser?.organization === 'object' ? authUser.organization.id : authUser?.organization);
     
     if (!orgId) return;
 
@@ -83,7 +83,16 @@ function EmployeeDashboard() {
         organization: authUser.organization,
       }, 
       (tasks) => {
-        dispatch(setTasks(tasks));
+        const serializableTasks = tasks.map(task => {
+          const newTask = { ...task };
+          Object.keys(newTask).forEach(key => {
+            if (newTask[key] && typeof newTask[key].toDate === 'function') {
+              newTask[key] = newTask[key].toDate().toISOString();
+            }
+          });
+          return newTask;
+        });
+        dispatch(setTasks(serializableTasks));
       }
     );
 

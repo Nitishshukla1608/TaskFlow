@@ -23,31 +23,50 @@ import {
 } from "firebase/firestore";
 
 
-export const listenToTasks = (userData, callback) => {
-    const { uid, role, organization } = userData;
-    if (!uid || typeof callback !== 'function') return () => {};
-  
-    const tasksRef = collection(db, "tasks");
-    let q;
-  
-    // Admins see everything in their org, Employees see assigned tasks
-    if (role === "Admin") {
-      q = query(tasksRef, where("organization", "==", organization));
-    } else {
-      q = query(tasksRef, where("assignedToUid", "==", uid));
-    }
-  
-    return onSnapshot(q, (snapshot) => {
-      const tasks = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toMillis?.() || null,
-      }));
-      callback(tasks);
-    }, (err) => console.error("Task Listener Error:", err));
-  };
-  
 
+
+export const listenToTasks = (userData, callback) => {
+  const { uid, role, organization } = userData;
+  
+  if (!uid || !organization || typeof callback !== 'function') {
+    console.warn("Missing required user data for task listener");
+    return () => {};
+  }
+
+  const tasksRef = collection(db, "tasks");
+  let q;
+
+  // IMPORTANT: The query must match the fields in your documents
+  if (role === "Admin") {
+    // Admins see everything in their organization
+    q = query(
+      tasksRef, 
+      where("organization", "==", organization)
+    );
+  } else {
+    // Employees see only tasks assigned to them within their organization
+    q = query(
+      tasksRef, 
+      where("organization", "==", organization),
+      where("assigneeId", "==", uid)
+    );
+  }
+
+  const unsubscribe = onSnapshot(q, (snapshot) => {
+    const tasks = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      // Safely convert Firestore Timestamp to milliseconds
+      createdAt: doc.data().createdAt?.toMillis?.() || null,
+    }));
+    callback(tasks);
+  }, (err) => {
+    console.error("Task Listener Error:", err);
+    // If you get an index error here, click the link in the browser console to create it
+  });
+
+  return unsubscribe;
+};
 
   
 export const addTask = async (newTask) => {

@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from "react";
-import { useSelector, useDispatch } from "react-redux";
+import React, { useState, useEffect } from "react";
+import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { auth } from "../../../../firebase";
 import { signOut as firebaseSignOut } from "firebase/auth";
@@ -23,7 +23,7 @@ const Profile = () => {
   const [securityStep, setSecurityStep] = useState("idle"); // idle | otp | reset
 
   // --- OTP & Security State ---
-  const [otpData, setOtpData] = useState({ input: "", server: "", timer: 240, active: false });
+  const [otpData, setOtpData] = useState({ input: "", server: "", active: false });
   const [newPassword, setNewPassword] = useState("");
   const [statusMsg, setStatusMsg] = useState({ type: "", text: "" });
 
@@ -59,8 +59,31 @@ const Profile = () => {
       );
       setOtpData(prev => ({ ...prev, server: generatedOtp, active: true }));
       setSecurityStep("otp");
+      setStatusMsg({ type: "success", text: "Verification code sent to your email." });
     } catch (err) {
       setStatusMsg({ type: "error", text: "Communication service unavailable." });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePasswordUpdate = async () => {
+    if (!newPassword || newPassword.length < 6) {
+      setStatusMsg({ type: "error", text: "Password must be at least 6 characters." });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Logic to update password in Firebase Auth/Firestore via service
+      await editPassword(newPassword);
+      
+      setSecurityStep("idle");
+      setNewPassword("");
+      setStatusMsg({ type: "success", text: "Security credentials updated successfully." });
+    } catch (err) {
+      // Note: Firebase often requires a recent login for password changes
+      setStatusMsg({ type: "error", text: "Update failed. You may need to re-login for security." });
     } finally {
       setLoading(false);
     }
@@ -79,7 +102,7 @@ const Profile = () => {
           </div>
           <div className="flex items-center gap-4">
             <button 
-              onClick={() => navigate(-1)} 
+              onClick={() => navigate("/dashboard")}
               className="text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors"
             >
               Back to Dashboard
@@ -104,14 +127,6 @@ const Profile = () => {
               <TabButton active={activeTab === "security"} onClick={() => setActiveTab("security")} icon={<Shield size={16}/>} label="Access & Security" />
               <TabButton active={activeTab === "localization"} onClick={() => setActiveTab("localization")} icon={<Globe size={16}/>} label="Regional Settings" />
             </div>
-            
-            <div className="mt-10 p-4 bg-indigo-50/50 rounded-xl border border-indigo-100">
-              <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-2">Profile Integrity</p>
-              <div className="flex items-center gap-2 text-indigo-700">
-                <CheckCircle size={14} />
-                <span className="text-xs font-semibold text-slate-700">Verified User Account</span>
-              </div>
-            </div>
           </aside>
 
           {/* Content Area */}
@@ -123,9 +138,6 @@ const Profile = () => {
                   <div className="w-20 h-20 bg-indigo-600 rounded-2xl flex items-center justify-center text-2xl font-bold text-white shadow-xl shadow-indigo-100">
                     {user.name?.charAt(0)}
                   </div>
-                  <button className="absolute -bottom-2 -right-2 p-1.5 bg-white border border-slate-200 rounded-lg shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Camera size={14} className="text-slate-500"/>
-                  </button>
                 </div>
                 <div>
                   <h2 className="text-xl font-bold text-slate-800 tracking-tight">{user.name}</h2>
@@ -136,8 +148,8 @@ const Profile = () => {
                 {isEditing ? (
                   <>
                     <button onClick={() => setIsEditing(false)} className="px-4 py-2 text-xs font-bold text-slate-500">Discard</button>
-                    <button onClick={handleUpdateProfile} className="flex items-center gap-2 px-5 py-2 bg-indigo-600 text-white rounded-lg text-xs font-bold shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all">
-                      <Save size={14}/> Synchronize Changes
+                    <button onClick={handleUpdateProfile} disabled={loading} className="flex items-center gap-2 px-5 py-2 bg-indigo-600 text-white rounded-lg text-xs font-bold shadow-lg hover:bg-indigo-700 transition-all disabled:opacity-50">
+                      {loading ? <Loader2 size={14} className="animate-spin"/> : <Save size={14}/>} Synchronize Changes
                     </button>
                   </>
                 ) : (
@@ -173,11 +185,15 @@ const Profile = () => {
                     <div className="flex items-center justify-between">
                       <div>
                         <h4 className="text-sm font-bold text-slate-800">Password & Authentication</h4>
-                        <p className="text-xs text-slate-500 mt-1">Last synchronized: {new Date().toLocaleDateString()}</p>
+                        <p className="text-xs text-slate-500 mt-1">Status: Identity Verified</p>
                       </div>
                       {securityStep === "idle" && (
-                        <button onClick={initPasswordReset} className="px-4 py-2 border border-indigo-200 text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-50 transition-all">
-                          Initiate Key Update
+                        <button 
+                          onClick={initPasswordReset} 
+                          disabled={loading}
+                          className="px-4 py-2 border border-indigo-200 text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-50 transition-all disabled:opacity-50"
+                        >
+                          {loading ? "Initializing..." : "Initiate Key Update"}
                         </button>
                       )}
                     </div>
@@ -202,10 +218,15 @@ const Profile = () => {
                             type="password" 
                             className="w-full border border-slate-200 rounded-lg px-4 py-2 text-sm"
                             placeholder="Define new secure password"
+                            value={newPassword}
                             onChange={(e) => setNewPassword(e.target.value)}
                           />
-                          <button className="w-full py-2 bg-indigo-600 text-white text-xs font-bold rounded-lg shadow-md shadow-indigo-100 hover:bg-indigo-700">
-                            Update Credentials
+                          <button 
+                            onClick={handlePasswordUpdate}
+                            disabled={loading}
+                            className="w-full py-2 bg-indigo-600 text-white text-xs font-bold rounded-lg shadow-md hover:bg-indigo-700 disabled:bg-indigo-400"
+                          >
+                            {loading ? "Updating..." : "Update Credentials"}
                           </button>
                         </div>
                       </div>
@@ -240,7 +261,7 @@ const Profile = () => {
 const TabButton = ({ active, onClick, icon, label }) => (
   <button 
     onClick={onClick}
-    className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
+    className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all w-full text-left ${
       active ? "bg-white text-indigo-600 shadow-sm border border-slate-200" : "text-slate-500 hover:text-slate-800 hover:bg-slate-50"
     }`}
   >
