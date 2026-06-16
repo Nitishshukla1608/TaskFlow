@@ -259,30 +259,30 @@ export const listenToUser = (uid, callback) => {
 
 
 
-// Listen only to ONE specific org
-export const listenToOrganization = (orgId, callback) => {
-  if (!orgId || typeof orgId !== 'string') {
-    console.warn("No valid orgId provided to listenToOrganization");
-    return () => {};
-  }
-
-  const docRef = doc(db, "organization", orgId); // ✅ singular as per addOrganization
-
-  return onSnapshot(
-    docRef,
-    (docSnap) => {
-      if (docSnap.exists()) {
-        callback({ id: docSnap.id, ...docSnap.data() });
-      } else {
-        console.warn("Organization not found:", orgId);
-        callback(null);
-      }
-    },
-    (err) => {
-      console.error("Org Listener Error:", err);
+  // Listen only to ONE specific org
+  export const listenToOrganization = (orgId, callback) => {
+    if (!orgId || typeof orgId !== 'string') {
+      console.warn("No valid orgId provided to listenToOrganization");
+      return () => {};
     }
-  );
-};
+
+    const docRef = doc(db, "organization", orgId); // ✅ singular as per addOrganization
+
+    return onSnapshot(
+      docRef,
+      (docSnap) => {
+        if (docSnap.exists()) {
+          callback({ id: docSnap.id, ...docSnap.data() });
+        } else {
+          console.warn("Organization not found:", orgId);
+          callback(null);
+        }
+      },
+      (err) => {
+        console.error("Org Listener Error:", err);
+      }
+    );
+  };
 
 
 // Note: listenToTasks has been moved to taskService.jsx to avoid redundancy.

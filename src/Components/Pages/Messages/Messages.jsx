@@ -483,75 +483,157 @@ const getChatId = (uid1, uid2) => {
     return () => unsubscribe();
   }, [loginUser]);
 
+
+
+
+
   const isParticipant = useMemo(() => {
     if (!activeCall || !loginUser) return false;
     return activeCall.hostId === loginUser.uid || activeCall.participants?.includes(loginUser.uid);
   }, [activeCall, loginUser]);
 
+
+
+
   useEffect(() => {
-    if (!selectedUser?.uid || !loginUser?.uid) {
-      setMessages([]);
-      return;
-    }
-  
-    const chatId = getChatId(loginUser.uid, selectedUser.uid);
-    const q = query(
-      collection(db, "direct_messages", chatId, "messages"), 
-      orderBy("timestamp", "asc")
-    );
-    
-    
-    const unsubscribe = onSnapshot(q, (snap) => {
-      // 1. Update UI immediately
-      const msgs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  if (!selectedUser?.uid || !loginUser?.uid) {
+    setMessages([]);
+    return;
+  }
+
+  const chatId = getChatId(
+    loginUser.uid,
+    selectedUser.uid
+  );
+
+  const q = query(
+    collection(
+      db,
+      "direct_messages",
+      chatId,
+      "messages"
+    ),
+    orderBy("timestamp", "asc")
+  );
+
+  const unsubscribe = onSnapshot(
+    q,
+    (snap) => {
+
+      // Update UI
+      const msgs = snap.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+
       setMessages(msgs);
-  
-      // 2. Filter unread messages sent by the OTHER person
-      const unreadDocs = snap.docs.filter(d => {
-        const data = d.data();
-        return data.senderId === selectedUser.uid && data.status !== "read";
+
+      // Find unread messages from other user
+      const unreadDocs = snap.docs.filter(doc => {
+        const data = doc.data();
+
+        return (
+          data.senderId === selectedUser.uid &&
+          data.status === "sent"
+        );
       });
-  
-      // 3. Update status in a single batch
+
       if (unreadDocs.length > 0) {
         const batch = writeBatch(db);
-        unreadDocs.forEach((docItem) => {
-          batch.update(docItem.ref, { status: "read" });
-        });
-        
-        // We don't 'await' here to keep the listener thread fast
-        batch.commit().catch(err => console.error("Failed to update read receipts:", err));
-      }
-    });
-    
-    return () => unsubscribe();
-    // REMOVED 'markAsRead' from dependencies if it's a function defined inside the component 
-    // to prevent unnecessary re-subscriptions unless you use useCallback.
-  }, [selectedUser?.uid, loginUser?.uid]);
 
-  const handleSendMessage = async (e) => {
-    e.preventDefault();
-    if (!inputText.trim() || !selectedUser || !loginUser) return;
-    const chatId = getChatId(loginUser.uid, selectedUser.uid);
-    const text = inputText;
-    setInputText("");
-    try {
-      if (editingMessage) {
-        await updateDoc(doc(db, "direct_messages", chatId, "messages", editingMessage.id), { text, isEdited: true });
-        setEditingMessage(null);
-      } else {
-        const msgRef = doc(collection(db, "direct_messages", chatId, "messages"));
-        await setDoc(msgRef, { 
-            text, 
-            tempMessage: true, 
-            senderId: loginUser.uid, 
-            timestamp: serverTimestamp(),
-            status: "sent" // Added status
+        unreadDocs.forEach(docItem => {
+          batch.update(docItem.ref, {
+            status: "read"
+          });
         });
-        await setDoc(doc(db, "direct_messages", chatId), { lastMessage: text, updatedAt: serverTimestamp() }, { merge: true });
+
+        batch.commit().catch(err => {
+          console.error(
+            "Read receipt update failed:",
+            err
+          );
+        });
       }
-    } catch (err) { console.error(err); }
-  };
+    },
+    (error) => {
+      console.error(
+        "Snapshot listener error:",
+        error
+      );
+    }
+  );
+
+  return () => unsubscribe();
+
+}, [selectedUser?.uid, loginUser?.uid]);
+
+
+const handleSendMessage = async (e) => {
+  e.preventDefault();
+
+  if (
+    !inputText.trim() ||
+    !selectedUser ||
+    !loginUser
+  ) return;
+
+  try {
+
+    const chatId = getChatId(
+      loginUser.uid,
+      selectedUser.uid
+    );
+
+    const msgRef = collection(
+      db,
+      "direct_messages",
+      chatId,
+      "messages"
+    );
+
+    const chatDocRef = doc(
+      db,
+      "direct_messages",
+      chatId
+    );
+
+    // Chat metadata
+    await setDoc(
+      chatDocRef,
+      {
+        participants: [
+          loginUser.uid,
+          selectedUser.uid
+        ],
+
+        lastMessage: inputText,
+
+        updatedAt: serverTimestamp()
+      },
+      { merge: true }
+    );
+
+    // Actual message
+    await addDoc(
+      msgRef,
+      {
+        text: inputText,
+        senderId: loginUser.uid,
+        timestamp: serverTimestamp(),
+        status: "sent"
+      }
+    );
+
+    setInputText("");
+
+  } catch (error) {
+    console.error(
+      "Message send failed:",
+      error
+    );
+  }
+};
+
 
   const handleEndCall = async (callDocId) => {
     if (!callDocId) return;

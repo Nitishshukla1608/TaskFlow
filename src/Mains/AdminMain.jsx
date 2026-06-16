@@ -90,6 +90,7 @@ const AdminMain = () => {
 
   const openTaskDetail = (task) => {
     setExpandedMetric(null)
+    setShowAllModal(false)
     setSelectedTask(task);
     setLocalStatus(task.status);
     setIsEditModalOpen(false);
@@ -477,7 +478,8 @@ const FullTaskListModal = ({ tasks, view, setView, searchQuery, setSearchQuery, 
                   <th className="px-8 py-5">Task</th>
                   <th className="px-8 py-5">Status</th>
                   <th className="px-8 py-5">Member</th>
-                  <th className="px-8 py-5 text-right">Connect</th>
+                  <th className="px-8 py-5 ">Deadline</th>
+                  <th className="px-8 py-5 mr-10">Message</th>
                 </tr>
               </thead>
             <tbody className="divide-y divide-slate-50">
