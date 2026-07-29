@@ -36,7 +36,7 @@ const DashboardWrapper = () => {
           <Route path="premium" element={<PremiumPricing />} />
           <Route path="premium/free-trial" element={<FreeTrial />} />
           <Route path="premium/paidplan" element={<PaidPlan />} />
-          <Route path="premium/free-trial/payment" element={<PaymentPage />} />
+          <Route path="premium/free-trial/payment" element={<PaymentPage />} /> 
           <Route path="premium/paidplan/payment" element={<PaymentPage />} />
         </Route>
       )}

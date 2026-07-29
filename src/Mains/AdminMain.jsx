@@ -244,11 +244,9 @@ const AdminMain = () => {
             </div>
 
             <div className="grid grid-cols-2 gap-3 mt-8">
-               <button onClick={(e) => openEditModal(e, selectedTask)} className="py-4 bg-white border border-slate-200 text-slate-700 rounded-2xl font-bold text-sm hover:bg-slate-50 transition-all flex items-center justify-center gap-2">
-                 <FiEdit2 size={14}/> Edit Status
-               </button>
+              
                <button onClick={() => setSelectedTask(null) } className="py-4 bg-slate-900 text-white rounded-2xl font-bold text-sm hover:bg-indigo-600 transition-all shadow-lg">
-                 Close Details
+                 Close Details  
                </button>
             </div>
           </div>
@@ -554,7 +552,19 @@ const ChatSidebar = ({ task, user, messages, onClose }) => {
           const isMe = m.senderId === user.uid;
           return (
             <div key={m.id || Math.random()} className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}>
-               {!isMe && <span className="text-[10px] font-black text-slate-400 uppercase mb-1 ml-2">{m.senderName}</span>}
+            {!isMe && (
+  <span className="text-[8px] font-black text-slate-500 uppercase mb-1 ml-2">
+    {m.senderName
+      ?.trim()
+      .split(" ")
+      .filter(Boolean)
+      .map((name, index, arr) =>
+        index === 0 || index === arr.length - 1 ? name : null
+      )
+      .filter(Boolean)
+      .join(" ")}
+  </span>
+)}
               <div className={`p-4 rounded-[1.5rem] text-[13px] font-medium max-w-[85%] shadow-sm ${
                 isMe ? "bg-indigo-600 text-white rounded-tr-none shadow-indigo-100" : "bg-white border border-slate-100 text-slate-700 rounded-tl-none shadow-slate-100"
               }`}>

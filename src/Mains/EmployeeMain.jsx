@@ -366,7 +366,15 @@ const ChatSidebar = ({ isOpen, onClose, task, messages, user, scrollRef }) => {
           const isMe = m.senderId === user.uid;
           return (
             <div key={m.id} className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}>
-              <span className="text-[9px] font-bold text-slate-400 mb-1.5 px-1 uppercase tracking-tighter">{isMe?"You":m.senderName}</span>
+       <span className="text-[9px] font-bold text-slate-400 mb-1.5 px-1 uppercase tracking-tighter">
+  {isMe
+    ? "You"
+    : m.senderName?.trim().split(" ").filter(Boolean).length > 1
+      ? `${m.senderName.trim().split(" ").filter(Boolean)[0]} ${
+          m.senderName.trim().split(" ").filter(Boolean).slice(-1)[0]
+        }`
+      : m.senderName}
+</span>
               <div className={`max-w-[85%] p-3.5 rounded-2xl text-[13px] font-medium shadow-sm ${isMe ? "bg-indigo-600 text-white rounded-tr-none" : "bg-white border border-slate-100 text-slate-700 rounded-tl-none"}`}>{m.text}</div>
             </div>
           );

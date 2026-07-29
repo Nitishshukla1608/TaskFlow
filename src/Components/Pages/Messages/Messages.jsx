@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import emailjs from '@emailjs/browser';
 import { 
   FiSend, FiSearch, FiMoreHorizontal, FiUser, FiChevronLeft, FiInfo,
-  FiPlus, FiTrash2,FiLink,FiLock , FiUsers ,FiX, FiVideo, FiPhoneCall, FiMail, FiCheck, FiClock 
+  FiPlus, FiTrash2, FiLink, FiLock, FiUsers, FiX, FiVideo, FiPhoneCall, FiMail, FiCheck, FiClock 
 } from "react-icons/fi"; 
 import { db } from "../../../firebase"; 
 import { 
@@ -27,8 +27,6 @@ const MeetingModal = ({ users, onClose, onCreate, onOpenMail }) => {
   return (
     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[150] p-4">
       <div className="bg-white rounded-xl w-full max-w-md shadow-xl border border-slate-200 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-300">
-        
-        {/* Header */}
         <div className="px-6 py-6 border-b border-slate-100 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-indigo-600 text-white rounded-lg flex items-center justify-center">
@@ -44,7 +42,6 @@ const MeetingModal = ({ users, onClose, onCreate, onOpenMail }) => {
           </button>
         </div>
         
-        {/* User List */}
         <div className="px-6 py-4">
           <div className="max-h-[320px] overflow-y-auto pr-1 space-y-1 custom-scrollbar">
             {users.map(user => {
@@ -82,7 +79,6 @@ const MeetingModal = ({ users, onClose, onCreate, onOpenMail }) => {
           </div>
         </div>
 
-        {/* Actions */}
         <div className="px-6 py-6 bg-slate-50 border-t border-slate-100 flex flex-col gap-3">
           <div className="flex gap-3">
             <button 
@@ -122,8 +118,6 @@ const MeetMailModal = ({ selectedUsers, onClose, onSend }) => {
   return (
     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[160] p-4">
       <div className="bg-white rounded-xl w-full max-w-md shadow-2xl border border-slate-200 animate-in fade-in zoom-in duration-200">
-        
-        {/* Header */}
         <div className="px-8 pt-8 pb-6 flex justify-between items-start">
           <div>
             <h2 className="text-xl font-bold text-slate-900 tracking-tight">Schedule Invitation</h2>
@@ -134,7 +128,6 @@ const MeetMailModal = ({ selectedUsers, onClose, onSend }) => {
           </button>
         </div>
         
-        {/* Form */}
         <div className="px-8 pb-8 space-y-5">
           <div className="space-y-1.5">
             <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
@@ -212,6 +205,7 @@ const MeetMailModal = ({ selectedUsers, onClose, onSend }) => {
   );
 };
 
+// --- 3. BULK MESSAGE SELECTOR ---
 const BulkMessageSelector = ({ users, onClose, onCreate }) => {
   const [selected, setSelected] = useState([]);
 
@@ -228,8 +222,6 @@ const BulkMessageSelector = ({ users, onClose, onCreate }) => {
   return (
     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[150] p-4">
       <div className="bg-white rounded-xl w-full max-w-md shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200">
-        
-        {/* Header */}
         <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-emerald-600 text-white rounded flex items-center justify-center">
@@ -245,7 +237,6 @@ const BulkMessageSelector = ({ users, onClose, onCreate }) => {
           </button>
         </div>
 
-        {/* List Section */}
         <div className="px-6 py-4">
           <div className="flex justify-between items-center mb-3 px-1">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
@@ -295,7 +286,6 @@ const BulkMessageSelector = ({ users, onClose, onCreate }) => {
           </div>
         </div>
 
-        {/* Footer Actions */}
         <div className="px-6 py-5 bg-slate-50 border-t border-slate-100 flex gap-3">
           <button 
             onClick={onClose} 
@@ -324,8 +314,6 @@ const BulkMessagesModal = ({ selectedUsers, onClose, onSend }) => {
   return (
     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[160] p-4">
       <div className="bg-white rounded-xl w-full max-w-md shadow-2xl border border-slate-200 animate-in fade-in zoom-in duration-200">
-        
-        {/* Header */}
         <div className="px-8 pt-8 pb-6 flex justify-between items-start">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
@@ -338,7 +326,6 @@ const BulkMessagesModal = ({ selectedUsers, onClose, onSend }) => {
           </button>
         </div>
         
-        {/* Input Fields */}
         <div className="px-8 pb-8 space-y-5">
           <div className="space-y-1.5">
             <label className="text-[11px] font-bold uppercase tracking-widest text-slate-500 ml-1">
@@ -388,9 +375,7 @@ const BulkMessagesModal = ({ selectedUsers, onClose, onSend }) => {
                 Processing...
               </>
             ) : (
-              <>
-                Confirm and Dispatch Message
-              </>
+              <>Confirm and Dispatch Message</>
             )}
           </button>
         </div>
@@ -398,7 +383,6 @@ const BulkMessagesModal = ({ selectedUsers, onClose, onSend }) => {
     </div>
   );
 };
-
 
 // --- MAIN MESSAGES COMPONENT ---
 const Messages = () => {
@@ -417,15 +401,15 @@ const Messages = () => {
   const [activeCall, setActiveCall] = useState(null);
   const [bulkMessageModalOpen, setBulkMessageModalOpen] = useState(false);
   const [bulkMessageSelectorOpen, setBulkMessageSelectorOpen] = useState(false);
-  
+  const isMarkingRead = useRef(false);
+
   const containerRef = useRef();
   const loginUser = useSelector((state) => state.auth?.user) || null;
   const members = useSelector((state) => state.auth?.members) || [];
 
-// Example helper
-const getChatId = (uid1, uid2) => {
-  return [uid1, uid2].sort().join("_"); 
-};
+  const getChatId = (uid1, uid2) => {
+    return [uid1, uid2].sort().join("_"); 
+  };
 
   const filteredMembers = useMemo(() => {
     return members.filter((m) => (m.name || "").toLowerCase().includes(searchTerm.toLowerCase()) && m.uid !== loginUser?.uid);
@@ -444,7 +428,7 @@ const getChatId = (uid1, uid2) => {
         msgRef,
         where("senderId", "==", otherUserId),
         where("status", "==", "sent")
-      );
+      );  
   
       const snapshot = await getDocs(q);
   
@@ -464,7 +448,6 @@ const getChatId = (uid1, uid2) => {
     isMarkingRead.current = false;
   }, [loginUser]);
 
-
   // --- SCROLL TO BOTTOM ---
   useEffect(() => {
     if (containerRef.current) {
@@ -483,157 +466,95 @@ const getChatId = (uid1, uid2) => {
     return () => unsubscribe();
   }, [loginUser]);
 
-
-
-
-
   const isParticipant = useMemo(() => {
     if (!activeCall || !loginUser) return false;
     return activeCall.hostId === loginUser.uid || activeCall.participants?.includes(loginUser.uid);
   }, [activeCall, loginUser]);
 
-
-
-
   useEffect(() => {
-  if (!selectedUser?.uid || !loginUser?.uid) {
-    setMessages([]);
-    return;
-  }
+    if (!selectedUser?.uid || !loginUser?.uid) {
+      setMessages([]);
+      return;
+    }
 
-  const chatId = getChatId(
-    loginUser.uid,
-    selectedUser.uid
-  );
+    const chatId = getChatId(loginUser.uid, selectedUser.uid);
 
-  const q = query(
-    collection(
-      db,
-      "direct_messages",
-      chatId,
-      "messages"
-    ),
-    orderBy("timestamp", "asc")
-  );
+    const q = query(
+      collection(db, "direct_messages", chatId, "messages"),
+      orderBy("timestamp", "asc")
+    );
 
-  const unsubscribe = onSnapshot(
-    q,
-    (snap) => {
+    const unsubscribe = onSnapshot(
+      q,
+      (snap) => {
+        const msgs = snap.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
 
-      // Update UI
-      const msgs = snap.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
+        setMessages(msgs);
 
-      setMessages(msgs);
-
-      // Find unread messages from other user
-      const unreadDocs = snap.docs.filter(doc => {
-        const data = doc.data();
-
-        return (
-          data.senderId === selectedUser.uid &&
-          data.status === "sent"
-        );
-      });
-
-      if (unreadDocs.length > 0) {
-        const batch = writeBatch(db);
-
-        unreadDocs.forEach(docItem => {
-          batch.update(docItem.ref, {
-            status: "read"
-          });
-        });
-
-        batch.commit().catch(err => {
-          console.error(
-            "Read receipt update failed:",
-            err
+        const unreadDocs = snap.docs.filter(doc => {
+          const data = doc.data();
+          return (
+            data.senderId === selectedUser.uid &&
+            data.status === "sent"
           );
         });
-      }
-    },
-    (error) => {
-      console.error(
-        "Snapshot listener error:",
-        error
-      );
-    }
-  );
 
-  return () => unsubscribe();
-
-}, [selectedUser?.uid, loginUser?.uid]);
-
-
-const handleSendMessage = async (e) => {
-  e.preventDefault();
-
-  if (
-    !inputText.trim() ||
-    !selectedUser ||
-    !loginUser
-  ) return;
-
-  try {
-
-    const chatId = getChatId(
-      loginUser.uid,
-      selectedUser.uid
-    );
-
-    const msgRef = collection(
-      db,
-      "direct_messages",
-      chatId,
-      "messages"
-    );
-
-    const chatDocRef = doc(
-      db,
-      "direct_messages",
-      chatId
-    );
-
-    // Chat metadata
-    await setDoc(
-      chatDocRef,
-      {
-        participants: [
-          loginUser.uid,
-          selectedUser.uid
-        ],
-
-        lastMessage: inputText,
-
-        updatedAt: serverTimestamp()
+        if (unreadDocs.length > 0) {
+          const batch = writeBatch(db);
+          unreadDocs.forEach(docItem => {
+            batch.update(docItem.ref, { status: "read" });
+          });
+          batch.commit().catch(err => {
+            console.error("Read receipt update failed:", err);
+          });
+        }
       },
-      { merge: true }
-    );
-
-    // Actual message
-    await addDoc(
-      msgRef,
-      {
-        text: inputText,
-        senderId: loginUser.uid,
-        timestamp: serverTimestamp(),
-        status: "sent"
+      (error) => {
+        console.error("Snapshot listener error:", error);
       }
     );
 
-    setInputText("");
+    return () => unsubscribe();
+  }, [selectedUser?.uid, loginUser?.uid]);
 
-  } catch (error) {
-    console.error(
-      "Message send failed:",
-      error
-    );
-  }
-};
+  const handleSendMessage = async (e) => {
+    e.preventDefault();
 
+    if (!inputText.trim() || !selectedUser || !loginUser) return;
+
+    try {
+      const chatId = getChatId(loginUser.uid, selectedUser.uid);
+      const msgRef = collection(db, "direct_messages", chatId, "messages");
+      const chatDocRef = doc(db, "direct_messages", chatId);
+
+      await setDoc(
+        chatDocRef,
+        {
+          participants: [loginUser.uid, selectedUser.uid],
+          lastMessage: inputText,
+          updatedAt: serverTimestamp()
+        },
+        { merge: true }
+      );
+
+      await addDoc(
+        msgRef,
+        {
+          text: inputText,
+          senderId: loginUser.uid,
+          timestamp: serverTimestamp(),
+          status: "sent"
+        }
+      );
+
+      setInputText("");
+    } catch (error) {
+      console.error("Message send failed:", error);
+    }
+  };
 
   const handleEndCall = async (callDocId) => {
     if (!callDocId) return;
@@ -669,11 +590,10 @@ const handleSendMessage = async (e) => {
     try {
       const emailPromises = selectedUsers.map(u => {
         const templateParams = {
-          
           to_name: u.name,
           to_email: u.email,
           from_name: loginUser.name,
-          from_email:loginUser.email,
+          from_email: loginUser.email,
           meet_link: details.link,
           meet_code: details.code,
           meet_pass: details.password
@@ -701,7 +621,6 @@ const handleSendMessage = async (e) => {
     const publicKey = 'A4ovkNHhyqVBb6k6k';
   
     try {
-      // 1️⃣ SAVE TO FIRESTORE
       await Promise.all(
         selectedUsers.map(async (u) => {
           const chatId = getChatId(loginUser.uid, u.uid);
@@ -727,7 +646,6 @@ const handleSendMessage = async (e) => {
         })
       );
   
-      // 2️⃣ SEND EMAILS (using allSettled so one fail doesn't stop the rest)
       const emailResults = await Promise.allSettled(
         selectedUsers.map((u) => {
           const templateParams = {
@@ -743,7 +661,6 @@ const handleSendMessage = async (e) => {
         })
       );
   
-      // 3️⃣ ANALYZE RESULTS
       const failures = emailResults.filter(r => r.status === 'rejected');
       
       if (failures.length > 0) {
@@ -774,240 +691,239 @@ const handleSendMessage = async (e) => {
     if (!window.confirm("Delete selected messages?")) return;
     const chatId = getChatId(loginUser.uid, selectedUser.uid);
     try {
-        await Promise.all(selectedIds.map(id => deleteDoc(doc(db, "direct_messages", chatId, "messages", id))));
-        exitSelection();
+      await Promise.all(selectedIds.map(id => deleteDoc(doc(db, "direct_messages", chatId, "messages", id))));
+      exitSelection();
     } catch(err) { console.error(err); }
   };
 
   const toggleSelect = (id) => setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
   const exitSelection = () => { setSelectedIds([]); setIsSelectionMode(false); };
 
- 
-    return (
-      <div className="flex h-[calc(100vh-64px)] w-full bg-[#f8fafc] overflow-hidden relative font-sans border-t border-slate-200">
-        {/* PROFESSIONAL NOTIFICATION BAR */}
-        {activeCall && isParticipant && (
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[110] flex items-center bg-emerald-600 text-white px-4 py-2 rounded shadow-lg border border-emerald-500 transition-all">
-            <button 
-              onClick={() => navigate(`/video-call/${activeCall.channelId}`)} 
-              className="flex items-center gap-3 hover:bg-emerald-700 py-1 px-2 rounded transition-colors"
-            >
-              <FiPhoneCall size={14} />
-              <span className="text-[11px] font-bold uppercase tracking-wider">Join Active Session</span>
-            </button>
-            
-            {activeCall.hostId === loginUser.uid && (
-              <>
-                <div className="w-[1px] h-4 bg-emerald-400/50 mx-2" />
-                <button 
-                  onClick={() => handleEndCall(activeCall.id)} 
-                  className="hover:bg-rose-600 p-1.5 rounded transition-colors"
-                  title="Terminate Session"
-                >
-                  <FiX size={14} />
-                </button>
-              </>
-            )}
-          </div>
-        )}
-  
-        {/* OVERLAY COMPONENTS */}
-        {isModalOpen && (
-          <MeetingModal 
-            users={filteredMembers} 
-            onClose={() => setIsModalOpen(false)} 
-            onCreate={handleCreateMeeting} 
-            onOpenMail={(users) => { setTempSelectedUsers(users); setIsMeetMailModel(true); }} 
-          />
-        )}
-        {isMeetMailModel && (
-          <MeetMailModal 
-            selectedUsers={tempSelectedUsers} 
-            onClose={() => setIsMeetMailModel(false)} 
-            onSend={handleMailCreateMeeting} 
-          />
-        )}
-        {bulkMessageSelectorOpen && (
-          <BulkMessageSelector 
-            users={filteredMembers} 
-            onClose={() => setBulkMessageSelectorOpen(false)} 
-            onCreate={(users) => { setTempSelectedUsers(users); setBulkMessageModalOpen(true); }} 
-          />
-        )}
-        {bulkMessageModalOpen && (
-          <BulkMessagesModal 
-            selectedUsers={tempSelectedUsers} 
-            onClose={() => setBulkMessageModalOpen(false)} 
-            onSend={handleBulkBroadcast} 
-          />
-        )}
-  
-        {/* NAVIGATION SIDEBAR */}
-        <div className={`${selectedUser ? "hidden" : "flex"} w-full md:w-[320px] md:flex flex-col bg-white border-r border-slate-200`}>
-          <div className="p-5 border-b border-slate-100">
-            <div className="flex justify-between mb-5 items-center">
-              <h3 className="text-xs font-black text-slate-500 uppercase tracking-[0.15em]">Workspace Messages</h3>
-              <div className="flex gap-1">
-                <button 
-                  onClick={() => setBulkMessageSelectorOpen(true)} 
-                  className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-slate-50 rounded transition-all"
-                  title="Bulk Transmission"
-                >
-                  <FiSend size={18} />
-                </button>
-                <button 
-                  onClick={handleVideoAction} 
-                  className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-slate-50 rounded transition-all"
-                  title="Initiate Meeting"
-                >
-                  <FiVideo size={18} />
-                </button>
-              </div>
-            </div>
-            <div className="relative group">
-              <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
-              <input 
-                value={searchTerm} 
-                onChange={(e) => setSearchTerm(e.target.value)} 
-                placeholder="Filter members..." 
-                className="w-full bg-slate-50 border border-slate-200 rounded py-2.5 pl-10 text-xs font-medium outline-none focus:ring-1 focus:ring-indigo-500 focus:bg-white transition-all" 
-              />
-            </div>
-          </div>
-  
-          <div className="flex-1 overflow-y-auto no-scrollbar py-2">
-            {filteredMembers.map(m => (
-              <button 
-                key={m.uid} 
-                onClick={() => { setSelectedUser(m); exitSelection(); }} 
-                className={`w-full flex items-center gap-3 px-5 py-3.5 transition-all border-l-2 ${
-                  selectedUser?.uid === m.uid 
-                    ? "bg-indigo-50/50 border-indigo-600 text-indigo-900" 
-                    : "border-transparent hover:bg-slate-50 text-slate-600"
-                }`}
-              >
-                <div className="relative flex-shrink-0">
-                  <div className={`w-9 h-9 rounded flex items-center justify-center text-xs font-bold ${
-                    selectedUser?.uid === m.uid ? "bg-indigo-600 text-white" : "bg-slate-200 text-slate-500"
-                  }`}>
-                    {m.name?.[0].toUpperCase()}
-                  </div>
-                  <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white ${
-                    m.role === "Admin" ? "bg-amber-500" : "bg-indigo-400"
-                  }`} />
-                </div>
-                <div className="text-left flex-1 min-w-0">
-                  <p className="text-[13px] font-bold truncate tracking-tight">{m.name}</p>
-                  <p className={`text-[10px] font-semibold uppercase tracking-wider truncate opacity-60`}>
-                    ID: {m.uid?.slice(0, 8)}
-                  </p>
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-  
-        {/* COMMUNICATION VIEWPORT */}
-        <div className={`${!selectedUser ? "hidden" : "flex"} flex-1 md:flex flex-col bg-white`}>
-          {selectedUser ? (
+  return (
+    <div className="flex h-[calc(100vh-64px)] w-full bg-[#f8fafc] overflow-hidden relative font-sans border-t border-slate-200">
+      {/* PROFESSIONAL NOTIFICATION BAR */}
+      {activeCall && isParticipant && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[110] flex items-center bg-emerald-600 text-white px-4 py-2 rounded shadow-lg border border-emerald-500 transition-all">
+          <button 
+            onClick={() => navigate(`/video-call/${activeCall.channelId}`)} 
+            className="flex items-center gap-3 hover:bg-emerald-700 py-1 px-2 rounded transition-colors"
+          >
+            <FiPhoneCall size={14} />
+            <span className="text-[11px] font-bold uppercase tracking-wider">Join Active Session</span>
+          </button>
+          
+          {activeCall.hostId === loginUser.uid && (
             <>
-              <div className="h-[65px] px-6 flex items-center justify-between border-b border-slate-100 bg-white">
-                <div className="flex items-center gap-4">
-                  <button 
-                    onClick={() => isSelectionMode ? exitSelection() : setSelectedUser(null)} 
-                    className="p-1 text-slate-400 hover:text-slate-600 transition-colors"
-                  >
-                    {isSelectionMode ? <FiX size={18} /> : <FiChevronLeft size={22} className="md:hidden" />}
-                  </button>
-                  <div className="flex flex-col">
-                      <h4 className="font-bold text-slate-800 text-[14px] leading-tight">
-                        {isSelectionMode ? `${selectedIds.length} Objects Selected` : selectedUser.name}
-                      </h4>
-                      {!isSelectionMode && (
-                        <span className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.1em]">
-                          {selectedUser.uid.slice(0,10)} 
-                        </span>
-                      )}
-                  </div>
-                </div>
-                
-                {isSelectionMode && selectedIds.length > 0 && (
-                    <button 
-                      onClick={handleDeleteSelected} 
-                      className="flex items-center gap-2 bg-rose-50 text-rose-600 px-4 py-2 rounded text-[11px] font-bold uppercase tracking-wider hover:bg-rose-600 hover:text-white transition-all"
-                    >
-                      <FiTrash2 size={14} /> Clear Records
-                    </button>
-                )}
-              </div>
-  
-              <div 
-                ref={containerRef} 
-                className="flex-1 overflow-y-auto p-6 md:px-12 space-y-4 bg-[#fcfcfd] no-scrollbar"
+              <div className="w-[1px] h-4 bg-emerald-400/50 mx-2" />
+              <button 
+                onClick={() => handleEndCall(activeCall.id)} 
+                className="hover:bg-rose-600 p-1.5 rounded transition-colors"
+                title="Terminate Session"
               >
-                {messages.length === 0 ? (
-                    <div className="h-full flex flex-col items-center justify-center text-slate-300">
-                        <FiMail size={32} className="mb-4 opacity-20" />
-                        <p className="text-[11px] font-bold uppercase tracking-[0.2em] opacity-40">No Communication History</p>
-                    </div>
-                ) : (
-                    messages.map((m) => (
-                      <MessageBubble
-                        key={m.id}
-                        msg={m}
-                        isMe={m.senderId === loginUser?.uid}
-                        isSelectionMode={isSelectionMode}
-                        isSelected={selectedIds.includes(m.id)}
-                        onSelect={() => toggleSelect(m.id)}
-                        onLongPress={() => { setIsSelectionMode(true); toggleSelect(m.id); }}
-                        activeMenuId={activeMenuId}
-                        setActiveMenuId={setActiveMenuId}
-                        onEdit={() => { setInputText(m.text); setEditingMessage(m); setActiveMenuId(null); }}
-                        onDelete={async (id) => {
-                            const chatId = getChatId(loginUser.uid, selectedUser.uid);
-                            await deleteDoc(doc(db, "direct_messages", chatId, "messages", id));
-                        }}
-                      />
-                    ))
-                )}
-              </div>
-  
-              <div className="p-5 border-t border-slate-100 bg-white">
-                 {editingMessage && (
-                     <div className="mb-3 flex items-center justify-between bg-indigo-600 text-white px-4 py-1.5 rounded-t text-[10px] font-bold uppercase tracking-[0.1em]">
-                         <span>Modifying Entry</span>
-                         <button onClick={() => { setEditingMessage(null); setInputText(""); }}><FiX size={14}/></button>
-                     </div>
-                 )}
-                 <form 
-                   onSubmit={handleSendMessage} 
-                   className={`flex items-end gap-2 bg-white border border-slate-200 p-1.5 rounded shadow-sm focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/10 transition-all`}
-                 >
-                 <input value={inputText} onChange={(e)=>setInputText(e.target.value)} placeholder="Type a message..." className="flex-1 bg-transparent px-4 py-2 text-sm font-medium outline-none" />
-
-                   <button 
-                     type="submit" 
-                     className="bg-slate-900 text-white p-3 rounded hover:bg-indigo-600 active:scale-95 transition-all flex-shrink-0"
-                   >
-                       {editingMessage ? <FiCheck size={18}/> : <FiSend size={18} />}
-                   </button>
-                 </form>
-                 <p className="mt-2 text-[9px] text-slate-400 font-bold uppercase tracking-tight px-1">
-                   Secure Workspace Encryption Enabled
-                 </p>
-              </div>
+                <FiX size={14} />
+              </button>
             </>
-          ) : (
-            <div className="flex-1 flex flex-col items-center justify-center text-slate-200">
-              <div className="w-20 h-20 rounded-full border border-slate-100 flex items-center justify-center mb-6">
-                 <FiUser size={32} className="opacity-20" />
-              </div>
-              <p className="font-bold uppercase tracking-[0.3em] text-[11px] text-slate-400">Select Session to View Logs</p>
-            </div>
           )}
         </div>
+      )}
+
+      {/* OVERLAY COMPONENTS */}
+      {isModalOpen && (
+        <MeetingModal 
+          users={filteredMembers} 
+          onClose={() => setIsModalOpen(false)} 
+          onCreate={handleCreateMeeting} 
+          onOpenMail={(users) => { setTempSelectedUsers(users); setIsMeetMailModel(true); }} 
+        />
+      )}
+      {isMeetMailModel && (
+        <MeetMailModal 
+          selectedUsers={tempSelectedUsers} 
+          onClose={() => setIsMeetMailModel(false)} 
+          onSend={handleMailCreateMeeting} 
+        />
+      )}
+      {bulkMessageSelectorOpen && (
+        <BulkMessageSelector 
+          users={filteredMembers} 
+          onClose={() => setBulkMessageSelectorOpen(false)} 
+          onCreate={(users) => { setTempSelectedUsers(users); setBulkMessageModalOpen(true); }} 
+        />
+      )}
+      {bulkMessageModalOpen && (
+        <BulkMessagesModal 
+          selectedUsers={tempSelectedUsers} 
+          onClose={() => setBulkMessageModalOpen(false)} 
+          onSend={handleBulkBroadcast} 
+        />
+      )}
+
+      {/* NAVIGATION SIDEBAR */}
+      <div className={`${selectedUser ? "hidden" : "flex"} w-full md:w-[320px] md:flex flex-col bg-white border-r border-slate-200`}>
+        <div className="p-5 border-b border-slate-100">
+          <div className="flex justify-between mb-5 items-center">
+            <h3 className="text-xs font-black text-slate-500 uppercase tracking-[0.15em]">Workspace Messages</h3>
+            <div className="flex gap-1">
+              <button 
+                onClick={() => setBulkMessageSelectorOpen(true)} 
+                className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-slate-50 rounded transition-all"
+                title="Bulk Transmission"
+              >
+                <FiSend size={18} />
+              </button>
+              <button 
+                onClick={handleVideoAction} 
+                className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-slate-50 rounded transition-all"
+                title="Initiate Meeting"
+              >
+                <FiVideo size={18} />
+              </button>
+            </div>
+          </div>
+          <div className="relative group">
+            <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+            <input 
+              value={searchTerm} 
+              onChange={(e) => setSearchTerm(e.target.value)} 
+              placeholder="Filter members..." 
+              className="w-full bg-slate-50 border border-slate-200 rounded py-2.5 pl-10 text-xs font-medium outline-none focus:ring-1 focus:ring-indigo-500 focus:bg-white transition-all" 
+            />
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto no-scrollbar py-2">
+          {filteredMembers.map(m => (
+            <button 
+              key={m.uid} 
+              onClick={() => { setSelectedUser(m); exitSelection(); }} 
+              className={`w-full flex items-center gap-3 px-5 py-3.5 transition-all border-l-2 ${
+                selectedUser?.uid === m.uid 
+                  ? "bg-indigo-50/50 border-indigo-600 text-indigo-900" 
+                  : "border-transparent hover:bg-slate-50 text-slate-600"
+              }`}
+            >
+              <div className="relative flex-shrink-0">
+                <div className={`w-9 h-9 rounded flex items-center justify-center text-xs font-bold ${
+                  selectedUser?.uid === m.uid ? "bg-indigo-600 text-white" : "bg-slate-200 text-slate-500"
+                }`}>
+                  {m.name?.[0].toUpperCase()}
+                </div>
+                <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white ${
+                  m.role === "Admin" ? "bg-amber-500" : "bg-indigo-400"
+                }`} />
+              </div>
+              <div className="text-left flex-1 min-w-0">
+                <p className="text-[13px] font-bold truncate tracking-tight">{m.name}</p>
+                <p className={`text-[10px] font-semibold uppercase tracking-wider truncate opacity-60`}>
+                  ID: {m.uid?.slice(0, 8)}
+                </p>
+              </div>
+            </button>
+          ))}
+        </div>
       </div>
-    );
+
+      {/* COMMUNICATION VIEWPORT */}
+      <div className={`${!selectedUser ? "hidden" : "flex"} flex-1 md:flex flex-col bg-white`}>
+        {selectedUser ? (
+          <>
+            <div className="h-[65px] px-6 flex items-center justify-between border-b border-slate-100 bg-white">
+              <div className="flex items-center gap-4">
+                <button 
+                  onClick={() => isSelectionMode ? exitSelection() : setSelectedUser(null)} 
+                  className="p-1 text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                  {isSelectionMode ? <FiX size={18} /> : <FiChevronLeft size={22} className="md:hidden" />}
+                </button>
+                <div className="flex flex-col">
+                    <h4 className="font-bold text-slate-800 text-[14px] leading-tight">
+                      {isSelectionMode ? `${selectedIds.length} Objects Selected` : selectedUser.name}
+                    </h4>
+                    {!isSelectionMode && (
+                      <span className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.1em]">
+                        {selectedUser.uid.slice(0,10)} 
+                      </span>
+                    )}
+                </div>
+              </div>
+              
+              {isSelectionMode && selectedIds.length > 0 && (
+                  <button 
+                    onClick={handleDeleteSelected} 
+                    className="flex items-center gap-2 bg-rose-50 text-rose-600 px-4 py-2 rounded text-[11px] font-bold uppercase tracking-wider hover:bg-rose-600 hover:text-white transition-all"
+                  >
+                    <FiTrash2 size={14} /> Clear Records
+                  </button>
+              )}
+            </div>
+
+            <div 
+              ref={containerRef} 
+              className="flex-1 overflow-y-auto p-4 md:px-12 space-y-1.5 bg-[#fcfcfd] no-scrollbar"
+            >
+              {messages.length === 0 ? (
+                  <div className="h-full flex flex-col items-center justify-center text-slate-300">
+                      <FiMail size={32} className="mb-4 opacity-20" />
+                      <p className="text-[11px] font-bold uppercase tracking-[0.2em] opacity-40">No Communication History</p>
+                  </div>
+              ) : (
+                  messages.map((m) => (
+                    <MessageBubble
+                      key={m.id}
+                      msg={m}
+                      isMe={m.senderId === loginUser?.uid}
+                      isSelectionMode={isSelectionMode}
+                      isSelected={selectedIds.includes(m.id)}
+                      onSelect={() => toggleSelect(m.id)}
+                      onLongPress={() => { setIsSelectionMode(true); toggleSelect(m.id); }}
+                      activeMenuId={activeMenuId}
+                      setActiveMenuId={setActiveMenuId}
+                      onEdit={() => { setInputText(m.text); setEditingMessage(m); setActiveMenuId(null); }}
+                      onDelete={async (id) => {
+                          const chatId = getChatId(loginUser.uid, selectedUser.uid);
+                          await deleteDoc(doc(db, "direct_messages", chatId, "messages", id));
+                      }}
+                    />
+                  ))
+              )}
+            </div>
+
+            <div className="p-5 border-t border-slate-100 bg-white">
+               {editingMessage && (
+                   <div className="mb-3 flex items-center justify-between bg-indigo-600 text-white px-4 py-1.5 rounded-t text-[10px] font-bold uppercase tracking-[0.1em]">
+                       <span>Modifying Entry</span>
+                       <button onClick={() => { setEditingMessage(null); setInputText(""); }}><FiX size={14}/></button>
+                   </div>
+               )}
+               <form 
+                 onSubmit={handleSendMessage} 
+                 className={`flex items-end gap-2 bg-white border border-slate-200 p-1.5 rounded shadow-sm focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/10 transition-all`}
+               >
+                 <input value={inputText} onChange={(e)=>setInputText(e.target.value)} placeholder="Type a message..." className="flex-1 bg-transparent px-4 py-2 text-sm font-medium outline-none" />
+
+                 <button 
+                   type="submit" 
+                   className="bg-slate-900 text-white p-3 rounded hover:bg-indigo-600 active:scale-95 transition-all flex-shrink-0"
+                 >
+                     {editingMessage ? <FiCheck size={18}/> : <FiSend size={18} />}
+                 </button>
+               </form>
+               <p className="mt-2 text-[9px] text-slate-400 font-bold uppercase tracking-tight px-1">
+                 Secure Workspace Encryption Enabled
+               </p>
+            </div>
+          </>
+        ) : (
+          <div className="flex-1 flex flex-col items-center justify-center text-slate-200">
+            <div className="w-20 h-20 rounded-full border border-slate-100 flex items-center justify-center mb-6">
+               <FiUser size={32} className="opacity-20" />
+            </div>
+            <p className="font-bold uppercase tracking-[0.3em] text-[11px] text-slate-400">Select Session to View Logs</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 };
 
 // --- MESSAGE BUBBLE COMPONENT ---
@@ -1023,7 +939,11 @@ const MessageBubble = ({ msg, isMe, isSelectionMode, isSelected, onSelect, onLon
   }, [isMenuOpen, setActiveMenuId]);
 
   return (
-    <div onContextMenu={(e)=>{e.preventDefault(); onLongPress();}} onClick={(e)=>{ if(isSelectionMode) { onSelect(mid); } else if (isMenuOpen) { setActiveMenuId(null); } }} className={`group flex items-center gap-3 w-full transition-all py-1 px-2 rounded-2xl ${isSelected ? "bg-indigo-50" : "hover:bg-slate-50/50"}`}>
+    <div 
+      onContextMenu={(e)=>{e.preventDefault(); onLongPress();}} 
+      onClick={(e)=>{ if(isSelectionMode) { onSelect(mid); } else if (isMenuOpen) { setActiveMenuId(null); } }} 
+      className={`group flex items-center gap-3 w-full transition-all py-0.5 px-2 rounded-2xl ${isSelected ? "bg-indigo-50" : "hover:bg-slate-50/50"}`}
+    >
       {isSelectionMode && (
           <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${isSelected ? "bg-indigo-600 border-indigo-600" : "border-slate-300"}`}>
               {isSelected && <div className="w-2 h-2 bg-white rounded-full"/>}
@@ -1043,18 +963,17 @@ const MessageBubble = ({ msg, isMe, isSelectionMode, isSelected, onSelect, onLon
               <button onClick={(e)=>{e.stopPropagation(); onDelete(mid);}} className="w-full text-left px-4 py-2 text-[10px] font-black uppercase text-rose-500 hover:bg-rose-50">Delete</button>
             </div>
           )}
-          <div className={`p-4 rounded-2xl text-sm font-bold shadow-sm ${isMe ? "bg-indigo-600 text-white rounded-tr-none" : "bg-white text-slate-700 border border-slate-100 rounded-tl-none"}`}>
-          <p className={`font-bold ${msg.description && "text-red-600"}`}>{msg.text}</p>
-          {msg.description && <p>{msg.description}</p>}
-            <div className={`flex items-center gap-1 mt-1.5 text-[9px] ${isMe ? "text-slate-400 justify-end" : "text-slate-400"}`}>
-          
+          <div className={`px-3.5 py-2.5 rounded-2xl text-sm font-medium shadow-sm ${isMe ? "bg-indigo-600 text-white rounded-tr-none" : "bg-white text-slate-700 border border-slate-100 rounded-tl-none"}`}>
+            <p className={`font-medium ${msg.description && "text-red-600"}`}>{msg.text}</p>
+            {msg.description && <p className="mt-1 text-xs">{msg.description}</p>}
+            <div className={`flex items-center gap-1 mt-1 text-[9px] ${isMe ? "text-indigo-200 justify-end" : "text-slate-400"}`}>
               {msg.timestamp ? new Date(msg.timestamp?.seconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "..."}
               
               {/* DOUBLE TICK LOGIC */}
               {isMe && (
                 <div className="flex ml-1">
-                  <FiCheck size={11} className={msg.status === "read" ? "text-indigo-400 -mr-1.5" : "text-slate-500"} />
-                  {msg.status === "read" && <FiCheck size={11} className="text-indigo-400" />}
+                  <FiCheck size={11} className={msg.status === "read" ? "text-indigo-200 -mr-1.5" : "text-indigo-300/60"} />
+                  {msg.status === "read" && <FiCheck size={11} className="text-indigo-200" />}
                 </div>
               )}
             </div>
